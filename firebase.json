@@ -1,1 +1,39 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"democra-sync","appId":"1:826745105225:android:f4e2f96a3b662360838898","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"democra-sync","configurations":{"android":"1:826745105225:android:f4e2f96a3b662360838898","ios":"1:826745105225:ios:e4198b3619aaa956838898","macos":"1:826745105225:ios:e4198b3619aaa956838898","web":"1:826745105225:web:50fdba2df657dcd4838898","windows":"1:826745105225:web:e5cdfbd09303126c838898"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "democra-sync",
+          "appId": "1:826745105225:android:f4e2f96a3b662360838898",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "democra-sync",
+          "configurations": {
+            "android": "1:826745105225:android:f4e2f96a3b662360838898",
+            "ios": "1:826745105225:ios:e4198b3619aaa956838898",
+            "macos": "1:826745105225:ios:e4198b3619aaa956838898",
+            "web": "1:826745105225:web:50fdba2df657dcd4838898",
+            "windows": "1:826745105225:web:e5cdfbd09303126c838898"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
