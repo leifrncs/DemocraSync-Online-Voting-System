@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 👉 NEW: Firestore import
-import 'dart:convert'; // 👉 NEW: For Base64 encoding
-import 'dart:io';      // 👉 NEW: For reading the file
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:bcrypt/bcrypt.dart'; 
+import 'dart:convert'; 
+import 'dart:io';      
 import '../constants.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   // --- STATE VARIABLES ---
   bool _isPasswordVisible = false;
-  bool _isLoading = false; // 👉 NEW: Tracks database upload status
+  bool _isLoading = false; 
 
   String? _selectedDept;
   String? _selectedCourse;
@@ -109,12 +110,131 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // 👉 UPDATED: Now handles Base64 encoding and Firestore writes
+  // 👉 NEW: Pop-up dialog to show the embedded Privacy Policy
+  void _showPrivacyPolicyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.policy_rounded, color: nemsuBlue),
+              SizedBox(width: 8),
+              Expanded(child: Text('Data Privacy Policy', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18))),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(
+                    child: Text(
+                      'DemocraSync Online Voting Application\nNorth Eastern Mindanao State University (NEMSU)',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  _buildPolicyHeader('Statement of Policy'),
+                  _buildPolicyText('The North Eastern Mindanao State University (NEMSU) is committed to protecting the privacy and security of its students\' personal data. This Data Privacy Policy explains how the DemocraSync Online Voting Application collects, uses, processes, and protects your information in compliance with the Republic Act No. 10173, also known as the Data Privacy Act of 2012 (DPA), and its Implementing Rules and Regulations.'),
+                  
+                  _buildPolicyHeader('1. Information We Collect'),
+                  _buildPolicyText('To facilitate a secure, fair, and transparent student election process, DemocraSync collects the following types of information:'),
+                  _buildPolicyBullet('Personal Identification Data: Full Name, Student ID Number, Course, Year Level, and Section/College.'),
+                  _buildPolicyBullet('Contact Information: Institutional Email Address or registered secondary email.'),
+                  _buildPolicyBullet('Technical and Security Data: IP address, device type, browser information, and login timestamps to monitor system security and prevent unauthorized access.'),
+                  _buildPolicyBullet('Voting Data: Encrypted records of your ballot submission. Note: To ensure the sanctity of the ballot, your personal identity is permanently decoupled from your specific vote choices. The system records THAT you voted, but not WHO you voted for.'),
+
+                  _buildPolicyHeader('2. Purpose of Data Collection'),
+                  _buildPolicyText('Your personal data is collected and processed exclusively for the following purposes:'),
+                  _buildPolicyBullet('To verify your identity and eligibility to vote in the current election.'),
+                  _buildPolicyBullet('To issue secure, one-time voting credentials (e.g., OTPs or voting links).'),
+                  _buildPolicyBullet('To prevent election fraud, such as multiple voting or unauthorized access.'),
+                  _buildPolicyBullet('To generate accurate and verifiable voter turnout reports and election results.'),
+                  _buildPolicyBullet('To maintain an audit trail for the resolution of any electoral protests or technical disputes.'),
+
+                  _buildPolicyHeader('3. Data Sharing and Disclosure'),
+                  _buildPolicyText('NEMSU will never sell, rent, or trade your personal information. Access to your data within the DemocraSync system is strictly limited to:'),
+                  _buildPolicyBullet('Authorized System Administrators: For technical maintenance and security monitoring.'),
+                  _buildPolicyBullet('NEMSU Commission on Elections (COMELEC): For verifying voter rolls and addressing election protests.'),
+                  _buildPolicyText('Your data will not be disclosed to any external third parties unless mandated by law or a valid legal order.'),
+
+                  _buildPolicyHeader('4. Data Security'),
+                  _buildPolicyText('We implement robust organizational, physical, and technical security measures to safeguard your data. These include:'),
+                  _buildPolicyBullet('End-to-end encryption of all data transmitted between your device and our servers.'),
+                  _buildPolicyBullet('Strict role-based access controls for system administrators and election officials.'),
+                  _buildPolicyBullet('Cryptographic hashing of voting receipts to guarantee ballot secrecy and integrity.'),
+                  _buildPolicyBullet('Regular security audits and vulnerability assessments of the DemocraSync platform.'),
+
+                  _buildPolicyHeader('5. Data Retention and Disposal'),
+                  _buildPolicyText('Personal data collected during the election period will only be retained for as long as necessary to fulfill the purposes outlined in this policy. Specifically:'),
+                  _buildPolicyBullet('Voter logs and system audit trails will be retained for sixty (60) days following the official certification of election results, or until any pending electoral protests are fully resolved.'),
+                  _buildPolicyBullet('After the retention period, all personal data and voting records will be securely and permanently deleted from our servers in accordance with the National Archives of the Philippines guidelines and the DPA.'),
+
+                  _buildPolicyHeader('6. Rights of the Data Subject'),
+                  _buildPolicyText('Under the Data Privacy Act of 2012, you possess the following rights regarding your personal data:'),
+                  _buildPolicyBullet('Right to be Informed: To know how your data will be collected and processed.'),
+                  _buildPolicyBullet('Right to Access: To request a copy of the personal information we hold about you.'),
+                  _buildPolicyBullet('Right to Object: To withhold consent, recognizing that doing so will forfeit your ability to use DemocraSync and participate in the online election.'),
+                  _buildPolicyBullet('Right to Rectification: To correct any inaccuracies in your student voting profile.'),
+                  _buildPolicyBullet('Right to Erasure or Blocking: To request the deletion of your data under specific conditions established by law.'),
+
+                  _buildPolicyHeader('7. Consent'),
+                  _buildPolicyText('By logging into the DemocraSync Online Voting Application and casting your ballot, you explicitly consent to the collection, processing, and storage of your personal data as described in this Data Privacy Policy.'),
+
+                  _buildPolicyHeader('8. Contact Us'),
+                  _buildPolicyText('If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact the NEMSU Data Protection Officer (DPO) or the Supreme Student Council (SSC) COMELEC at:\n• Email: dpo@nemsu.edu.ph / comelec@nemsu.edu.ph\n• Office: Office of the Student Affairs and Services, North Eastern Mindanao State University, Tandag City, Surigao del Sur.'),
+                  ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), 
+              child: const Text('Close', style: TextStyle(color: Colors.grey))
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: nemsuBlue, foregroundColor: Colors.white),
+              onPressed: () {
+                setState(() => _agreedToTerms = true);
+                Navigator.pop(context);
+              },
+              child: const Text('I Agree'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  // Formatting helpers for the dialog
+  Widget _buildPolicyHeader(String text) => Padding(
+    padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+    child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: nemsuBlue)),
+  );
+  Widget _buildPolicyText(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Text(text, style: const TextStyle(fontSize: 12, height: 1.4)),
+  );
+  Widget _buildPolicyBullet(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 6.0, left: 12.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('• ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: nemsuGold)),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 12, height: 1.4))),
+      ],
+    ),
+  );
+
   Future<void> _handleRegistration() async {
     final email = _emailController.text.trim();
     final studentId = _studentIdController.text.trim();
 
-    // 1. Basic Validations
     if (studentId.isEmpty || _fullNameController.text.isEmpty) {
       _showError('Please fill in all text fields.');
       return;
@@ -136,14 +256,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
     if (!_agreedToTerms) {
-      _showError('Please agree to the terms and conditions.');
+      _showError('Please agree to the Data Privacy Policy.');
       return;
     }
 
-    setState(() => _isLoading = true); // Start loading spinner
+    setState(() => _isLoading = true);
 
     try {
-      // 2. Check for Duplicate Student ID
       DocumentSnapshot existingUser = await FirebaseFirestore.instance.collection('voters').doc(studentId).get();
       if (existingUser.exists) {
         _showError('This Student ID is already registered.');
@@ -151,26 +270,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      // 3. Convert the Image to a Base64 Text String
       String base64Image = '';
       if (_pickedFile!.bytes != null) {
-        // For Web
         base64Image = base64Encode(_pickedFile!.bytes!);
       } else {
-        // For Mobile
         File file = File(_pickedFile!.path!);
         List<int> bytes = await file.readAsBytes();
         base64Image = base64Encode(bytes);
       }
 
-      // Firestore has a 1MB limit per document. 
       if (base64Image.length > 900000) {
         _showError('File is too large! Please select a smaller or compressed image.');
         setState(() => _isLoading = false);
         return;
       }
 
-      // 4. Save Student Data AND the Base64 Image directly to Firestore
+      String hashedPassword = BCrypt.hashpw(_passwordController.text, BCrypt.gensalt());
+
       await FirebaseFirestore.instance.collection('voters').doc(studentId).set({
         'name': _fullNameController.text.trim(),
         'age': _ageController.text.trim(),
@@ -180,13 +296,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'course': _selectedCourse,
         'yearLevel': _selectedYear,
         'email': email,
-        'password': _passwordController.text, 
-        'corBase64': base64Image, // 👉 The AI Python script will read this!
-        'status': 'Pending Verification', // 👉 Default lock status
+        'password': hashedPassword, 
+        'corBase64': base64Image,
+        'status': 'Pending Verification', 
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // 5. Success! Navigate back
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Registration submitted! Awaiting AI verification.'), backgroundColor: Colors.green),
@@ -197,7 +312,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showError('Error during registration: $e');
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false); // Stop loading spinner
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -240,41 +355,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // --- SECTION 1: PERSONAL INFO ---
                       _sectionTitle('Personal Information'),
                       _buildField(_fullNameController, 'Full Name', Icons.person_outline),
                       Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Age takes up 2 parts of the space
-                          Expanded(
-                            flex: 2, 
-                            child: TextFormField(
-                              controller: _ageController,
-                              keyboardType: TextInputType.number,
-                              decoration: _buildInputDecoration('Age', Icons.cake_outlined),
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2, 
+                              child: TextFormField(
+                                controller: _ageController,
+                                keyboardType: TextInputType.number,
+                                decoration: _buildInputDecoration('Age', Icons.cake_outlined),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Birth Date takes up 3 parts of the space so the text fits
-                          Expanded(
-                            flex: 3, 
-                            child: TextFormField(
-                              controller: _birthDateController,
-                              readOnly: true,
-                              onTap: _selectDate,
-                              decoration: _buildInputDecoration('Birth Date', Icons.calendar_month_outlined),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3, 
+                              child: TextFormField(
+                                controller: _birthDateController,
+                                readOnly: true,
+                                onTap: _selectDate,
+                                decoration: _buildInputDecoration('Birth Date', Icons.calendar_month_outlined),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
                     
                       _buildDropdown('Gender', _genders, _selectedGender, (val) => setState(() => _selectedGender = val), Icons.wc_outlined),
 
-                      // --- SECTION 2: ACADEMIC INFO ---
                       const SizedBox(height: 20),
                       _sectionTitle('Academic Details'),
                       _buildField(_studentIdController, 'Student ID (e.g. 23-0001)', Icons.badge_outlined),
@@ -300,7 +411,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       _buildDropdown('Year Level', _yearLevels, _selectedYear, (val) => setState(() => _selectedYear = val), Icons.layers_outlined),
                                           
-                      // --- SECTION 3: DOCUMENT UPLOAD ---
                       const SizedBox(height: 20),
                       _sectionTitle('Enrollment Verification'),
                       const Text('Upload Certificate of Registration (Small Image/Screenshot)', style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -329,24 +439,44 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
 
-                      // --- SECTION 4: SECURITY ---
                       const SizedBox(height: 20),
                       _sectionTitle('Account Security'),
                       _buildField(_emailController, 'NEMSU Email (@nemsu.edu.ph)', Icons.email_outlined),
                       _buildPasswordField(_passwordController, 'Password'),
                       _buildPasswordField(_confirmPasswordController, 'Confirm Password'),
 
-                      // --- TERMS ---
+                      // 👉 THE FIX: Clickable RichText for Data Privacy Policy
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Checkbox(value: _agreedToTerms, activeColor: nemsuBlue, onChanged: (val) => setState(() => _agreedToTerms = val!)),
-                          const Expanded(child: Text('I agree to the Data Privacy Policy for student elections.', style: TextStyle(fontSize: 11))),
+                          Checkbox(
+                            value: _agreedToTerms, 
+                            activeColor: nemsuBlue, 
+                            onChanged: (val) => setState(() => _agreedToTerms = val!)
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _showPrivacyPolicyDialog,
+                              child: RichText(
+                                text: const TextSpan(
+                                  style: TextStyle(fontSize: 11, color: Colors.black87),
+                                  children: [
+                                    TextSpan(text: 'I have read and agree to the '),
+                                    TextSpan(
+                                      text: 'Data Privacy Policy', 
+                                      style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)
+                                    ),
+                                    TextSpan(text: ' for student elections.'),
+                                  ]
+                                )
+                              ),
+                            ),
+                          ),
                         ],
                       ),
 
                       const SizedBox(height: 20),
                       
-                      // 👉 UPDATED: Button shows a loading spinner during upload
                       SizedBox(
                         height: 54,
                         child: ElevatedButton(
@@ -373,7 +503,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  // --- UI HELPERS ---
   Widget _sectionTitle(String title) => Padding(
     padding: const EdgeInsets.only(bottom: 12, top: 4),
     child: Text(title, style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 14)),

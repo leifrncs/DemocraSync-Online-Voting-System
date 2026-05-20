@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:bcrypt/bcrypt.dart'; // 👉 NEW: Import BCrypt
 import '../constants.dart';
 import 'student_main.dart'; 
 import 'admin_dashboard.dart'; 
@@ -30,27 +31,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     // Admin Routing
-    if (studentId.toLowerCase() == 'admin') {
-      if (password == 'admin123') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AdminDashboard()));
-      } else {
-        // 👉 NEW: WRITE A SECURITY THREAT LOG
-        FirebaseFirestore.instance.collection('audit_logs').add({
-          'timestamp': FieldValue.serverTimestamp(),
-          'logCategory': 'SECURITY ALERT',
-          'event': 'Failed Admin Login Attempt',
-          'severity': 'Warning',
-          'details': {
-            'Target': 'Login Authentication',
-            'Trigger': 'Incorrect password entered for "admin"',
-            'Recommended_Action': 'Monitor for brute-force attacks.'
-          },
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incorrect Admin Password'), backgroundColor: Colors.redAccent),
-        );
-      }
+    if (studentId.toLowerCase() == 'admin' && password == 'admin123') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+      );
       return;
     }
 
@@ -65,9 +50,19 @@ class _LoginScreenState extends State<LoginScreen> {
       if (voterDoc.exists) {
         Map<String, dynamic> data = voterDoc.data() as Map<String, dynamic>;
         
-        if (data['password'] == password) {
+        // 👉 THE FIX: Safely check the inputted password against the BCrypt hash
+        bool isPasswordCorrect = false;
+        
+        try {
+          isPasswordCorrect = BCrypt.checkpw(password, data['password']);
+        } catch (e) {
+          // If the DB contains an old test account (plain text or SHA-256), 
+          // BCrypt.checkpw will fail. We catch it here so the app doesn't crash.
+          isPasswordCorrect = false; 
+        }
+        
+        if (isPasswordCorrect) {
           
-          // 👉 NEW: NOTIFY BUT DON'T BLOCK
           if (data['status'] == 'Pending Verification' || data['status'] == 'Pending') {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -77,7 +72,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: Duration(seconds: 4),
               ),
             );
-            // Notice there is no "return;" here anymore. We let the code continue!
           } else if (data['status'] == 'Verified') {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
 
-          // Let them into the app!
           if (!mounted) return;
           Navigator.pushReplacement(
             context,
@@ -140,7 +133,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // --- 1. HEADER SECTION ---
                 Column(
                   children: [
                     Image.asset(
@@ -166,7 +158,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // --- 2. FORM SECTION ---
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
@@ -195,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 15),
 
                       const Text('Password', style: TextStyle(color: nemsuBlue, fontSize: 13, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
@@ -217,12 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8.0),
-                        child: Text('Hint: Use ID "admin" & pass "admin123" for Admin Panel', style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic)),
-                      ),
-
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
 
                       SizedBox(
                         height: 54,
@@ -235,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 15),
 
                       Center(
                         child: InkWell(
@@ -249,7 +235,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // --- 3. FOOTER SECTION ---
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
