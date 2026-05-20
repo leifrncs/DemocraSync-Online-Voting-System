@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "826745105225",
+    "project_id": "democra-sync",
+    "storage_bucket": "democra-sync.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:826745105225:android:f4e2f96a3b662360838898",
+        "android_client_info": {
+          "package_name": "com.example.nemsu_voting"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "826745105225-mrk8sb94bg5846eqtkmrp3i5vgiui4t4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nemsu_voting",
+            "certificate_hash": "799b49b0eb0d4a645d593ea09f7255ff17a4ccaa"
+          }
+        },
+        {
+          "client_id": "826745105225-8kobha420rh3qtdq2cd84v2p0mli3alo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzSQcO8RHzWxmIcDgi_LC5PxYgr5NEEUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "826745105225-8kobha420rh3qtdq2cd84v2p0mli3alo.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "826745105225-vrs0vk7i9arfro38h17c2htu82ane8jp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.nemsuVoting"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
