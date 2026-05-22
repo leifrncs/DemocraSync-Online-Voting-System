@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart'; 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -254,23 +255,34 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     activeTrackColor: Colors.green,
                     inactiveTrackColor: Colors.grey.shade600,
                     onChanged: (value) async {
-                      await FirebaseFirestore.instance.collection('settings').doc('election').set({'isActive': value}, SetOptions(merge: true));
-                      
-                      // Write to Audit Logs
-                      await FirebaseFirestore.instance.collection('audit_logs').add({
-                        'timestamp': FieldValue.serverTimestamp(),
-                        'logCategory': 'ACTIVITY LOG',
-                        'action': 'Election Status Toggled',
-                        'user': 'Admin_Primary',
-                        'type': 'Configuration',
-                        'details': {
-                          'Target': 'settings/election',
-                          'Payload': '{"isActive": $value}',
-                        },
-                      });
+                      try {
+                        // 1. Perform the update
+                        await FirebaseFirestore.instance.collection('settings').doc('election').set(
+                          {'isActive': value}, 
+                          SetOptions(merge: true)
+                        );
+                        
+                        // 2. Write to Audit Logs
+                        await FirebaseFirestore.instance.collection('audit_logs').add({
+                          'timestamp': FieldValue.serverTimestamp(),
+                          'action': 'Election Status Toggled',
+                          'user': 'admin', // Ensure this user is actually logged in!
+                          'type': 'Configuration',
+                          'details': {'isActive': value},
+                        });
 
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value ? 'Voting is OPEN for students.' : 'Voting is CLOSED for students.'), backgroundColor: value ? Colors.green : Colors.redAccent));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Status updated: ${value ? "OPEN" : "LOCKED"}'), backgroundColor: Colors.green)
+                          );
+                        }
+                      } catch (e) {
+                        // THIS IS THE KEY: If it fails, this will show you exactly why (e.g., Permission Denied)
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to update: $e'), backgroundColor: Colors.red)
+                          );
+                        }
                       }
                     },
                   ),
@@ -315,10 +327,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     _buildNavItem(Icons.assignment_rounded, 4),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.redAccent),
-                      onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen())),
-                      tooltip: 'Logout',
-                    ),
+                    icon: const Icon(Icons.logout, color: Colors.redAccent),
+                    tooltip: 'Logout',
+                    onPressed: () async {
+                      // 1. Clear the persistent session
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.clear(); 
+
+                      // 2. Navigate away safely
+                      if (!mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context, 
+                        MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                        (route) => false, // Clears the entire navigation history
+                      );
+                    },
+                  ),
                     const SizedBox(height: 20),
                   ],
                 ),

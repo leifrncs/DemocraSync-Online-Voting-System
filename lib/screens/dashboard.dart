@@ -33,95 +33,100 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent, 
 
+      // 👉 1. THE BODY FIX
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                ),
+          // Scrollbar stays on the far right edge
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800), // Matches Ballot and Guidelines width perfectly
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text('Welcome, $studentName!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                    const SizedBox(height: 4),
-                    Text(studentDept, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Welcome, $studentName!', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                          const SizedBox(height: 4),
+                          Text(studentDept, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    Image.asset(
+                      'assets/democrasync-logo1.png',
+                      width: 100, 
+                      height: 100,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('DemocraSync', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: nemsuBlue)),
+                    const Text('Empowering the Student Voice.', style: TextStyle(fontSize: 16, color: nemsuGold, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                    const SizedBox(height: 32),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Our Mission', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      '"To empower the student body of North Eastern Mindanao State University by providing a secure, transparent, and accessible digital voting platform."',
+                      style: TextStyle(fontSize: 16, height: 1.6, color: Colors.black87, fontStyle: FontStyle.italic),
+                      textAlign: TextAlign.justify,
+                    ),
+                    const SizedBox(height: 32),
+
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Why Use This App?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildFeatureItem(Icons.security, 'Secure & Verified', 'Built exclusively for verified NEMSU students to ensure every vote is legitimate.'),
+                    const SizedBox(height: 16),
+                    _buildFeatureItem(Icons.touch_app, 'Convenient', 'Skip the long lines. Cast your ballot from anywhere on campus.'),
+                    const SizedBox(height: 50),
+
+                    SizedBox(
+                      width: double.infinity, // Forces the button to stretch nicely across the column
+                      height: 55,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isButtonDisabled ? Colors.grey.shade400 : nemsuBlue,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: isButtonDisabled ? null : onNavigateToBallot, 
+                        child: Text(
+                          buttonText, 
+                          style: TextStyle(
+                            color: isButtonDisabled ? Colors.grey.shade700 : Colors.white, 
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 16,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
-
-              Image.asset(
-                'assets/democrasync-logo1.png',
-                width: 100, 
-                height: 100,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 6),
-              const Text('DemocraSync', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: nemsuBlue)),
-              const Text('Empowering the Student Voice.', style: TextStyle(fontSize: 16, color: nemsuGold, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-              const SizedBox(height: 32),
-
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Our Mission', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '"To empower the student body of North Eastern Mindanao State University by providing a secure, transparent, and accessible digital voting platform."',
-                style: TextStyle(fontSize: 16, height: 1.6, color: Colors.black87, fontStyle: FontStyle.italic),
-                textAlign: TextAlign.justify,
-              ),
-              const SizedBox(height: 32),
-
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Why Use This App?', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureItem(Icons.security, 'Secure & Verified', 'Built exclusively for verified NEMSU students to ensure every vote is legitimate.'),
-              const SizedBox(height: 16),
-              _buildFeatureItem(Icons.touch_app, 'Convenient', 'Skip the long lines. Cast your ballot from anywhere on campus.'),
-              const SizedBox(height: 30),
-            ],
-          ),
-        ),
-      ),
-
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -4))],
-        ),
-        child: SizedBox(
-          height: 55,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              // Change color if disabled
-              backgroundColor: isButtonDisabled ? Colors.grey.shade400 : nemsuBlue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: isButtonDisabled ? null : onNavigateToBallot, 
-            child: Text(
-              buttonText, // 👉 Uses the dynamic text calculated above
-              style: TextStyle(
-                color: isButtonDisabled ? Colors.grey.shade700 : Colors.white, 
-                fontWeight: FontWeight.bold, 
-                fontSize: 16,
-                letterSpacing: 1.2,
-              ),
             ),
           ),
         ),
       ),
+
+      
     );
   }
 

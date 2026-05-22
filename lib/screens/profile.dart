@@ -233,9 +233,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               String corBase64 = data['corBase64'] ?? '';
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 700),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20), // Moved padding here
+                    child: Column(
+                      children: [
                     // --- 1. USER ID CARD (HEADER) ---
                     Container(
                       padding: const EdgeInsets.all(24),
@@ -377,6 +381,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 30),
                   ],
+                ),
+                  ),
+                ),
                 ),
               );
             }

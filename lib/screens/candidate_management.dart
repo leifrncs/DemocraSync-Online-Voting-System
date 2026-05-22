@@ -236,21 +236,23 @@ class _CandidateManagementState extends State<CandidateManagement> {
               const Text('Manage USG and Local Student Council candidates in real-time', style: TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 16),
               
-              SizedBox(
-                width: double.infinity, 
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: nemsuBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              // Locate your "Add New Candidate" button and wrap it like this:
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 380), // Caps the button at 250px
+                child: SizedBox(
+                  width: double.infinity, // Ensures the button fills the 250px cap
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: nemsuBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 2,
+                      padding: const EdgeInsets.symmetric(vertical: 14), 
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: _configuredPositions.isEmpty ? null : () => _showCandidateForm(), 
+                    icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                    label: const Text('Add Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   ),
-                  onPressed: _configuredPositions.isEmpty 
-                      ? null // Disable if no config exists
-                      : () => _showCandidateForm(), 
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-                  label: const Text('Add New Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5)),
                 ),
               ),
               if (_configuredPositions.isEmpty)

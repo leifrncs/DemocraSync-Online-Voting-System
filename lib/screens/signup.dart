@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:bcrypt/bcrypt.dart'; 
 import 'dart:convert'; 
-import 'dart:io';      
+import 'package:flutter/foundation.dart' show kIsWeb;      
 import '../constants.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -84,9 +85,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _pickCOR() async {
+    // 1. Only request permissions if we are NOT on web
+    if (!kIsWeb) {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.storage,
+        Permission.photos,
+      ].request();
+
+      if (!(statuses[Permission.photos]!.isGranted || statuses[Permission.storage]!.isGranted)) {
+        _showError('Permission denied! Please allow access to photos/storage.');
+        return;
+      }
+    }
+
+    // 2. Pick the file with Web data support FOR ALL PLATFORMS
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png'],
+      withData: true, 
     );
 
     if (result != null) {
@@ -110,7 +126,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  // 👉 NEW: Pop-up dialog to show the embedded Privacy Policy
   void _showPrivacyPolicyDialog() {
     showDialog(
       context: context,
@@ -124,14 +139,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
               Expanded(child: Text('Data Privacy Policy', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18))),
             ],
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Center(
-                    child: Text(
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 700),
+            child: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Center(
+                      child: Text(
                       'DemocraSync Online Voting Application\nNorth Eastern Mindanao State University (NEMSU)',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
@@ -190,6 +207,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   _buildPolicyText('If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact the NEMSU Data Protection Officer (DPO) or the Supreme Student Council (SSC) COMELEC at:\n• Email: dpo@nemsu.edu.ph / comelec@nemsu.edu.ph\n• Office: Office of the Student Affairs and Services, North Eastern Mindanao State University, Tandag City, Surigao del Sur.'),
                   ],
               ),
+            ),
             ),
           ),
           actions: [
@@ -274,9 +292,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (_pickedFile!.bytes != null) {
         base64Image = base64Encode(_pickedFile!.bytes!);
       } else {
-        File file = File(_pickedFile!.path!);
-        List<int> bytes = await file.readAsBytes();
-        base64Image = base64Encode(bytes);
+        _showError('Failed to read file data. Please try re-selecting the image.');
+        setState(() => _isLoading = false);
+        return;
       }
 
       if (base64Image.length > 900000) {
@@ -337,9 +355,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-            child: Column(
-              children: [
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 700),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Column(
+                    children: [
                 const Text('Student Registration', style: TextStyle(color: nemsuBlue, fontSize: 26, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 const Text('Please fill out the form below to register your information.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
@@ -445,7 +467,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       _buildPasswordField(_passwordController, 'Password'),
                       _buildPasswordField(_confirmPasswordController, 'Confirm Password'),
 
-                      // 👉 THE FIX: Clickable RichText for Data Privacy Policy
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -496,6 +517,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+              ),
             ),
           ),
         ),

@@ -76,14 +76,25 @@ class _BallotScreenState extends State<BallotScreen> {
             organizedBallot[scope]![pos]!.add(candidate);
           }
 
-          return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            children: [
-              _buildScopeSection('University-Wide (USG)', organizedBallot['University-Wide (USG)']!),
-              const SizedBox(height: 30),
-              _buildScopeSection(widget.studentDept.toUpperCase(), organizedBallot['College Student Government']!),
-              const SizedBox(height: 100),
-            ],
+          // 👉 THE BODY FIX: Swapped ListView for SingleChildScrollView + Center + ConstrainedBox
+          return SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800), // 800px keeps the ballot highly readable
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildScopeSection('University-Wide (USG)', organizedBallot['University-Wide (USG)']!),
+                      const SizedBox(height: 30),
+                      _buildScopeSection(widget.studentDept.toUpperCase(), organizedBallot['College Student Government']!),
+                      const SizedBox(height: 100),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           );
         },
       ),
@@ -106,35 +117,39 @@ class _BallotScreenState extends State<BallotScreen> {
               Text('Review Your Ballot', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Please verify your selections. Empty positions will be counted as "Abstained".',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Divider(color: nemsuGold, thickness: 2, height: 30),
-                  
-                  // Summary of votes
-                  ..._selectedCandidates.entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: Text('${entry.key}:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nemsuBlue))),
-                          Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                        ],
-                      ),
-                    );
-                  }),
-                  if (_selectedCandidates.isEmpty)
-                    const Text('No candidates selected.', style: TextStyle(color: Colors.redAccent, fontStyle: FontStyle.italic)),
-                ],
+          // 👉 THE FIX: Added ConstrainedBox to stop the dialog from expanding infinitely
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600), // Caps the width at 600 pixels
+            child: SizedBox(
+              width: double.maxFinite, // Tells it to fill up to the 600px limit, but no further
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Please verify your selections. Empty positions will be counted as "Abstained".',
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const Divider(color: nemsuGold, thickness: 2, height: 30),
+                    
+                    // Summary of votes
+                    ..._selectedCandidates.entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: Text('${entry.key}:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nemsuBlue))),
+                            Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                          ],
+                        ),
+                      );
+                    }),
+                    if (_selectedCandidates.isEmpty)
+                      const Text('No candidates selected.', style: TextStyle(color: Colors.redAccent, fontStyle: FontStyle.italic)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -297,29 +312,39 @@ class _BallotScreenState extends State<BallotScreen> {
 
   Widget _buildSubmitButton() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      // Keep the white background and shadow spanning the full width
       decoration: const BoxDecoration(
         color: Colors.white, 
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))]
       ),
-      child: SizedBox(
-        height: 55,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _selectedCandidates.isEmpty ? Colors.grey.shade300 : nemsuGold,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-          ),
-          // 👉 CALL THE DIALOG HERE
-          onPressed: _selectedCandidates.isEmpty ? null : () => _showConfirmationDialog(context),
-          child: Text(
-            'REVIEW & CAST VOTE', 
-            style: TextStyle(
-              color: _selectedCandidates.isEmpty ? Colors.grey.shade500 : nemsuBlue, 
-              fontSize: 16, 
-              fontWeight: FontWeight.bold, 
-              letterSpacing: 1.5
-            )
+      child: Center(
+        heightFactor: 1.0, 
+        child: ConstrainedBox(
+          // 👉 THE FIX: Reduced from 800 to 400 so the button isn't massive!
+          constraints: const BoxConstraints(maxWidth: 800), 
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: SizedBox(
+              width: double.infinity, // Fills the 400px constraint cleanly
+              height: 55,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedCandidates.isEmpty ? Colors.grey.shade300 : nemsuGold,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                ),
+                onPressed: _selectedCandidates.isEmpty ? null : () => _showConfirmationDialog(context),
+                child: Text(
+                  'REVIEW & CAST VOTE', 
+                  style: TextStyle(
+                    color: _selectedCandidates.isEmpty ? Colors.grey.shade500 : nemsuBlue, 
+                    fontSize: 16, 
+                    fontWeight: FontWeight.bold, 
+                    letterSpacing: 1.5
+                  )
+                ),
+              ),
+            ),
           ),
         ),
       ),

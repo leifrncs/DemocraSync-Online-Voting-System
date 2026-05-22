@@ -138,6 +138,60 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
     }
   }
 
+
+  Future<void> _resetElectionData() async {
+    // 1. Show confirmation dialog
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Election Data?', style: TextStyle(color: Colors.redAccent)),
+        content: const Text('This will delete all current votes, set candidate counts to zero, and allow students to vote again. This action CANNOT be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Confirm Reset', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      // 1. Reset Candidates to 0
+      var candidates = await FirebaseFirestore.instance.collection('candidates').get();
+      for (var doc in candidates.docs) {
+        batch.update(doc.reference, {'voteCount': 0});
+      }
+
+      // 2. Clear actual ballot records (the 'votes' collection)
+      var votes = await FirebaseFirestore.instance.collection('votes').get();
+      for (var doc in votes.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // 3. Reset Voters' ability to vote
+      var voters = await FirebaseFirestore.instance.collection('voters').get();
+      for (var doc in voters.docs) {
+        batch.update(doc.reference, {'hasVoted': false});
+      }
+
+      await batch.commit();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election data reset successfully!'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error resetting: $e'), backgroundColor: Colors.redAccent));
+      }
+    }
+  }
+
   // 👉 NEW: DATE & TIME PICKER LOGIC
   Future<void> _pickDateTime(bool isStart) async {
     DateTime initialDate = isStart ? (startDate ?? DateTime.now()) : (endDate ?? DateTime.now());
@@ -265,6 +319,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
                   child: Text(isEdit ? 'Update' : 'Add Position'),
                 ),
               ],
+              
             );
           },
         );
@@ -302,6 +357,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
                     _buildDateTimeTile('End Voting', endDate, endTime, () => _pickDateTime(false)),
                   ],
                 ),
+                
               ),
             ),
             const SizedBox(height: 32),
@@ -375,6 +431,26 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
                 onPressed: _saveConfiguration, 
                 icon: const Icon(Icons.cloud_upload_rounded),
                 label: const Text('Save COMSELEC Configuration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+            // --- ADD THIS "DANGER ZONE" BLOCK BELOW ---
+            const SizedBox(height: 60),
+            const Divider(color: Colors.redAccent, thickness: 1),
+            const SizedBox(height: 20),
+            const Center(
+              child: Text("Danger Zone", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+                ),
+                onPressed: _resetElectionData,
+                icon: const Icon(Icons.delete_forever),
+                label: const Text('Reset All Election Data'),
               ),
             ),
             const SizedBox(height: 40),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 import 'dashboard.dart';
 import 'ballot.dart';     
@@ -210,7 +211,20 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                    onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => const LoginScreen()), (route) => false),
+                    tooltip: 'Logout',
+                    onPressed: () async {
+                      // 1. Clear the persistent session
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.clear(); 
+
+                      // 2. Navigate away safely
+                      if (!mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context, 
+                        MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                        (route) => false, // Clears the entire navigation history
+                      );
+                    },
                   ),
                 ],
               ),
