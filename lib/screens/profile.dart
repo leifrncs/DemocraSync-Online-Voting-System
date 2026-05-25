@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart'; 
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;     
+import 'dart:io' if (dart.library.html) 'dart:html' as io; 
 import '../constants.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -60,9 +62,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateCOR() async {
+    // 1. Mobile permissions check
+    if (!kIsWeb) {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.storage,
+        Permission.photos,
+      ].request();
+
+      if (!(statuses[Permission.photos]!.isGranted || statuses[Permission.storage]!.isGranted)) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permission denied! Please allow access to photos/storage.'), backgroundColor: Colors.redAccent));
+        return;
+      }
+    }
+
+    // 2. Pick the file using Web-safe data loading
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
+      withData: true, // CRITICAL FOR WEB UPLOADS
     );
 
     if (result != null) {
@@ -71,12 +88,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         String base64Image = '';
         var pickedFile = result.files.first;
 
+        // Use bytes to ensure cross-platform compatibility
         if (pickedFile.bytes != null) {
           base64Image = base64Encode(pickedFile.bytes!);
         } else {
-          File file = File(pickedFile.path!);
-          List<int> bytes = await file.readAsBytes();
-          base64Image = base64Encode(bytes);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to read file data. Please try again.'), backgroundColor: Colors.redAccent));
+          setState(() => _isLoading = false);
+          return;
         }
 
         if (base64Image.length > 900000) {
@@ -237,7 +255,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 700),
                   child: Padding(
-                    padding: const EdgeInsets.all(20), // Moved padding here
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
                     // --- 1. USER ID CARD (HEADER) ---
@@ -275,7 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: enrollmentStatus == 'Verified' ? Colors.green : Colors.orange, size: 16),
                                 const SizedBox(width: 6),
                                 Text(
-                                  enrollmentStatus == 'Verified' ? 'Verified Voter' : 'Verification Pending', 
+                                  enrollmentStatus == 'Verified' ? 'Verified Voter' : (enrollmentStatus == 'Rejected' ? 'Verification Rejected' : 'Verification Pending'), 
                                   style: TextStyle(color: enrollmentStatus == 'Verified' ? Colors.green : Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)
                                 ),
                               ],
@@ -338,7 +356,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   onPressed: () => _viewCOR(corBase64), 
                                   child: const Text('View', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue))
                                 ),
-                                // Only show update button if they are not verified (i.e. Rejected or Pending)
+                                // Only show update button if they are not verified
                                 if (enrollmentStatus != 'Verified')
                                   TextButton(
                                     onPressed: _updateCOR, 
@@ -359,7 +377,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: _cardDecoration(),
                       child: Column(
                         children: [
-                          // 👉 NEW: Editable Email
                           ListTile(
                             leading: const Icon(Icons.email_outlined, color: nemsuBlue),
                             title: const Text('Institutional Email', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
@@ -369,7 +386,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const Divider(height: 1, indent: 50),
                           
-                          // 👉 NEW: Editable Password
                           ListTile(
                             leading: const Icon(Icons.lock_outline, color: nemsuBlue),
                             title: const Text('Change Password', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87)),
@@ -426,7 +442,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.grey.shade400, size: 22), // Grey icon denotes read-only
+          Icon(icon, color: Colors.grey.shade400, size: 22),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -438,7 +454,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          const Icon(Icons.lock_outline, color: Colors.grey, size: 16), // Visual cue it can't be changed
+          const Icon(Icons.lock_outline, color: Colors.grey, size: 16), 
         ],
       ),
     );
