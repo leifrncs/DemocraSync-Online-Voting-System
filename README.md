@@ -1,4 +1,4 @@
-# nemsu_voting
+# DemocraSync Online Voting System
 
 A new Flutter project.
 
