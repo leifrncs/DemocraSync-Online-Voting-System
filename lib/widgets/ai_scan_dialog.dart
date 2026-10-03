@@ -174,7 +174,39 @@ class AiScanResultDialog extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const Divider(height: 20),
+                      // Document Layout Authenticity Row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            width: 80,
+                            child: Text('Format', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  result.isOfficialCOR
+                                      ? 'Official NEMSU COR Format'
+                                      : 'Non-Official / Incomplete Format',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: result.isOfficialCOR ? Colors.green.shade800 : Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            result.isOfficialCOR ? Icons.verified_user_rounded : Icons.gpp_bad_rounded,
+                            color: result.isOfficialCOR ? Colors.green : Colors.redAccent,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
 
                       _buildComparisonRow(
                         'Student ID',
@@ -191,7 +223,36 @@ class AiScanResultDialog extends StatelessWidget {
                       ),
                       if (result.academicYear != 'N/A' || result.semester != 'N/A') ...[
                         const SizedBox(height: 10),
-                        _buildSimpleRow('Term / SY', '${result.semester} • ${result.academicYear}'),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(
+                              width: 80,
+                              child: Text('Academic Term', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${result.semester} • ${result.academicYear}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                                  if (result.isOutdated)
+                                    const Text('Outdated Document (Prior Term)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent))
+                                  else if (result.termMatched)
+                                    Text('Current Term Verified', style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              result.termMatched
+                                  ? Icons.check_circle
+                                  : (result.isOutdated ? Icons.cancel_rounded : Icons.info_outline_rounded),
+                              color: result.termMatched
+                                  ? Colors.green
+                                  : (result.isOutdated ? Colors.redAccent : Colors.orange),
+                              size: 18,
+                            ),
+                          ],
+                        ),
                       ],
                       if (result.detectedDepartment != 'N/A') ...[
                         const SizedBox(height: 10),

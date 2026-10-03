@@ -20,6 +20,26 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
   List<Map<String, dynamic>> positionRules = [];
   bool isLoading = true;
 
+  // --- ACADEMIC PERIOD STATE ---
+  String _selectedAcademicYear = '2026-2027';
+  String _selectedSemester = '1st Semester';
+  bool _enforceTermVerification = true;
+
+  final List<String> _academicYearOptions = [
+    '2024-2025',
+    '2025-2026',
+    '2026-2027',
+    '2027-2028',
+    '2028-2029',
+    '2029-2030',
+  ];
+
+  final List<String> _semesterOptions = [
+    '1st Semester',
+    '2nd Semester',
+    'Summer / Midyear',
+  ];
+
   final TextEditingController _apiKeyController = TextEditingController();
   bool _isApiKeyVisible = false;
   bool _isTestingKey = false;
@@ -62,11 +82,35 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
 
       DocumentSnapshot doc = await FirebaseFirestore.instance.collection('config').doc('election_settings').get();
       
-      if (doc.exists && (doc.data() as Map<String, dynamic>).containsKey('positions')) {
+      if (doc.exists && doc.data() != null) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         
         setState(() {
-          positionRules = List<Map<String, dynamic>>.from(data['positions']);
+          if (data.containsKey('academicYear') && data['academicYear'] != null) {
+            String ay = data['academicYear'].toString().trim();
+            if (ay.isNotEmpty) {
+              if (!_academicYearOptions.contains(ay)) {
+                _academicYearOptions.insert(0, ay);
+              }
+              _selectedAcademicYear = ay;
+            }
+          }
+          if (data.containsKey('semester') && data['semester'] != null) {
+            String sem = data['semester'].toString().trim();
+            if (sem.isNotEmpty) {
+              if (!_semesterOptions.contains(sem)) {
+                _semesterOptions.insert(0, sem);
+              }
+              _selectedSemester = sem;
+            }
+          }
+          if (data.containsKey('enforceTermVerification')) {
+            _enforceTermVerification = data['enforceTermVerification'] != false;
+          }
+
+          if (data.containsKey('positions')) {
+            positionRules = List<Map<String, dynamic>>.from(data['positions']);
+          }
           
           if (data.containsKey('schedule')) {
             var sched = data['schedule'];
@@ -140,6 +184,9 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
           'start': combinedStart?.toIso8601String(),
           'end': combinedEnd?.toIso8601String(),
         },
+        'academicYear': _selectedAcademicYear,
+        'semester': _selectedSemester,
+        'enforceTermVerification': _enforceTermVerification,
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
@@ -439,6 +486,73 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
                   ],
                 ),
                 
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // --- SECTION: ACTIVE ACADEMIC PERIOD & ENROLLMENT VERIFICATION ---
+            _buildSectionHeader('Active Academic Period & Enrollment Verification', Icons.school_rounded),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Election Academic Term',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: nemsuBlue),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Specify the active Academic Year and Semester for this election. Gemini Vision AI uses these settings to verify student CORs and automatically flag or reject outdated documents.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        bool isNarrow = constraints.maxWidth < 500;
+                        if (isNarrow) {
+                          return Column(
+                            children: [
+                              _buildAcademicYearDropdown(),
+                              const SizedBox(height: 12),
+                              _buildSemesterDropdown(),
+                            ],
+                          );
+                        } else {
+                          return Row(
+                            children: [
+                              Expanded(child: _buildAcademicYearDropdown()),
+                              const SizedBox(width: 12),
+                              Expanded(child: _buildSemesterDropdown()),
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: nemsuBlue,
+                      title: const Text(
+                        'Enforce Term Matching',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: nemsuBlue),
+                      ),
+                      subtitle: const Text(
+                        'When enabled, students uploading CORs from previous academic years or semesters will be automatically rejected by AI OCR with a clear explanation.',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      value: _enforceTermVerification,
+                      onChanged: (val) {
+                        setState(() {
+                          _enforceTermVerification = val;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -794,6 +908,66 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
         onPressed: onChange, // Call the picker method here
         child: const Text('Change', style: TextStyle(color: Colors.blue)),
       ),
+    );
+  }
+
+  Widget _buildAcademicYearDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _academicYearOptions.contains(_selectedAcademicYear)
+          ? _selectedAcademicYear
+          : _academicYearOptions.first,
+      decoration: InputDecoration(
+        labelText: 'Academic Year (A.Y.)',
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        filled: true,
+        fillColor: nemsuBackground,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+        prefixIcon: const Icon(Icons.calendar_today_rounded, size: 18, color: nemsuBlue),
+      ),
+      items: _academicYearOptions.map((ay) {
+        return DropdownMenuItem<String>(
+          value: ay,
+          child: Text('A.Y. $ay', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        );
+      }).toList(),
+      onChanged: (newAy) {
+        if (newAy != null) {
+          setState(() {
+            _selectedAcademicYear = newAy;
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildSemesterDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _semesterOptions.contains(_selectedSemester)
+          ? _selectedSemester
+          : _semesterOptions.first,
+      decoration: InputDecoration(
+        labelText: 'Semester / Term',
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        filled: true,
+        fillColor: nemsuBackground,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+        prefixIcon: const Icon(Icons.timelapse_rounded, size: 18, color: nemsuBlue),
+      ),
+      items: _semesterOptions.map((sem) {
+        return DropdownMenuItem<String>(
+          value: sem,
+          child: Text(sem, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+        );
+      }).toList(),
+      onChanged: (newSem) {
+        if (newSem != null) {
+          setState(() {
+            _selectedSemester = newSem;
+          });
+        }
+      },
     );
   }
 }

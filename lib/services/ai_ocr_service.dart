@@ -6,6 +6,11 @@ import '../constants.dart';
 
 class OCRScanResult {
   final bool isCOR;
+  final bool isOfficialCOR;
+  final bool hasNemsuHeader;
+  final bool hasScheduleTable;
+  final bool hasCertification;
+  final bool hasRegistrarSignature;
   final String detectedStudentId;
   final String detectedFullName;
   final String detectedDepartment;
@@ -15,12 +20,19 @@ class OCRScanResult {
   final double confidence;
   final bool idMatched;
   final bool nameMatched;
+  final bool termMatched;
+  final bool isOutdated;
   final String verdict; // 'Verified', 'Pending Verification', 'Rejected'
   final String reason;
   final Map<String, dynamic> rawData;
 
   OCRScanResult({
     required this.isCOR,
+    this.isOfficialCOR = true,
+    this.hasNemsuHeader = true,
+    this.hasScheduleTable = true,
+    this.hasCertification = true,
+    this.hasRegistrarSignature = true,
     required this.detectedStudentId,
     required this.detectedFullName,
     required this.detectedDepartment,
@@ -30,6 +42,8 @@ class OCRScanResult {
     required this.confidence,
     required this.idMatched,
     required this.nameMatched,
+    this.termMatched = true,
+    this.isOutdated = false,
     required this.verdict,
     required this.reason,
     required this.rawData,
@@ -44,17 +58,40 @@ class OCRScanResult {
       normalizedVerdict = 'Rejected';
     }
 
+    bool isOfficialCOR = map['isOfficialCOR'] == true ||
+        (map['isCOR'] == true &&
+            map['hasNemsuHeader'] != false &&
+            map['hasScheduleTable'] != false);
+    bool hasNemsuHeader = map['hasNemsuHeader'] == true || (map['hasNemsuHeader'] == null && isOfficialCOR);
+    bool hasScheduleTable = map['hasScheduleTable'] == true || (map['hasScheduleTable'] == null && isOfficialCOR);
+    bool hasCertification = map['hasCertification'] == true || (map['hasCertification'] == null && isOfficialCOR);
+    bool hasRegistrarSignature = map['hasRegistrarSignature'] == true || (map['hasRegistrarSignature'] == null && isOfficialCOR);
+
+    bool isOutdated = map['isOutdated'] == true ||
+        (map['termMatched'] == false && map['isCOR'] == true);
+    bool termMatched = map['termMatched'] == true ||
+        (map['termMatched'] == null && !isOutdated);
+
     return OCRScanResult(
       isCOR: map['isCOR'] == true,
+      isOfficialCOR: isOfficialCOR,
+      hasNemsuHeader: hasNemsuHeader,
+      hasScheduleTable: hasScheduleTable,
+      hasCertification: hasCertification,
+      hasRegistrarSignature: hasRegistrarSignature,
       detectedStudentId: map['detectedStudentId']?.toString() ?? 'N/A',
       detectedFullName: map['detectedFullName']?.toString() ?? 'N/A',
       detectedDepartment: map['detectedDepartment']?.toString() ?? 'N/A',
       detectedCourse: map['detectedCourse']?.toString() ?? 'N/A',
       academicYear: map['academicYear']?.toString() ?? 'N/A',
       semester: map['semester']?.toString() ?? 'N/A',
-      confidence: (map['confidence'] is num) ? (map['confidence'] as num).toDouble() : 0.85,
+      confidence: (map['confidence'] is num)
+          ? (map['confidence'] as num).toDouble()
+          : 0.85,
       idMatched: map['idMatched'] == true,
       nameMatched: map['nameMatched'] == true,
+      termMatched: termMatched,
+      isOutdated: isOutdated,
       verdict: normalizedVerdict,
       reason: map['reason']?.toString() ?? 'Verification processed.',
       rawData: map,
@@ -64,6 +101,11 @@ class OCRScanResult {
   factory OCRScanResult.fallbackPending({required String reason}) {
     return OCRScanResult(
       isCOR: true,
+      isOfficialCOR: false,
+      hasNemsuHeader: false,
+      hasScheduleTable: false,
+      hasCertification: false,
+      hasRegistrarSignature: false,
       detectedStudentId: 'Manual Inspection Required',
       detectedFullName: 'Manual Inspection Required',
       detectedDepartment: 'N/A',
@@ -73,6 +115,8 @@ class OCRScanResult {
       confidence: 0.5,
       idMatched: false,
       nameMatched: false,
+      termMatched: false,
+      isOutdated: false,
       verdict: 'Pending Verification',
       reason: reason,
       rawData: {'fallback': true, 'reason': reason},
@@ -82,6 +126,11 @@ class OCRScanResult {
   Map<String, dynamic> toMap() {
     return {
       'isCOR': isCOR,
+      'isOfficialCOR': isOfficialCOR,
+      'hasNemsuHeader': hasNemsuHeader,
+      'hasScheduleTable': hasScheduleTable,
+      'hasCertification': hasCertification,
+      'hasRegistrarSignature': hasRegistrarSignature,
       'detectedStudentId': detectedStudentId,
       'detectedFullName': detectedFullName,
       'detectedDepartment': detectedDepartment,
@@ -91,6 +140,8 @@ class OCRScanResult {
       'confidence': confidence,
       'idMatched': idMatched,
       'nameMatched': nameMatched,
+      'termMatched': termMatched,
+      'isOutdated': isOutdated,
       'verdict': verdict,
       'reason': reason,
       'scannedAt': FieldValue.serverTimestamp(),
@@ -203,6 +254,31 @@ class AiOcrService {
       // Ignore Firestore read error, fall back
     }
     return geminiModelName.trim();
+  }
+
+  /// Retrieves the active Academic Year, Semester, and verification enforcement settings.
+  Future<Map<String, dynamic>> getActiveAcademicPeriod() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('config')
+          .doc('election_settings')
+          .get();
+
+      if (doc.exists && doc.data() != null) {
+        var data = doc.data() as Map<String, dynamic>;
+        return {
+          'academicYear':
+              data['academicYear']?.toString().trim() ?? '2026-2027',
+          'semester': data['semester']?.toString().trim() ?? '1st Semester',
+          'enforceTermVerification': data['enforceTermVerification'] != false,
+        };
+      }
+    } catch (_) {}
+    return {
+      'academicYear': '2026-2027',
+      'semester': '1st Semester',
+      'enforceTermVerification': true,
+    };
   }
 
   /// Saves or updates the Gemini API key and model in Firestore system settings.
@@ -439,17 +515,26 @@ class AiOcrService {
     }
   }
 
-  /// Analyzes a Certificate of Registration (COR) image with seamless multi-model fallback.
+  /// Analyzes a Certificate of Registration (COR) image with term validation & seamless multi-model fallback.
   Future<OCRScanResult> analyzeCOR({
     required Uint8List imageBytes,
     required String studentId,
     required String fullName,
     required String department,
     required String course,
+    String? expectedAcademicYear,
+    String? expectedSemester,
     String? mimeType,
   }) async {
     final apiKey = await getActiveApiKey();
     final activeModel = await getActiveModelName();
+    final periodInfo = await getActiveAcademicPeriod();
+
+    final targetAcademicYear =
+        expectedAcademicYear ?? periodInfo['academicYear'] ?? '2026-2027';
+    final targetSemester =
+        expectedSemester ?? periodInfo['semester'] ?? '1st Semester';
+    final bool enforceTerm = periodInfo['enforceTermVerification'] != false;
 
     if (apiKey.isEmpty) {
       return OCRScanResult.fallbackPending(
@@ -462,29 +547,69 @@ class AiOcrService {
       String effectiveMimeType = mimeType ?? _detectMimeType(imageBytes);
 
       final prompt = '''
-You are the official Document Verification AI for NEMSU (North Eastern Mindanao State University) DemocraSync election system.
-Carefully analyze this uploaded student document (Certificate of Registration / COR / Assessment Form).
+You are the official Document Verification & Anti-Spoofing AI for NEMSU (North Eastern Mindanao State University) DemocraSync election system.
+Carefully analyze this uploaded document image to verify whether it is a genuine, official NEMSU Certificate of Registration (COR) and validate the student's enrollment credentials.
 
 Expected Student Registration Details:
 - Student ID Number: "$studentId"
 - Full Name: "$fullName"
 - Department: "$department"
 - Degree Program / Course: "$course"
+- Active Election Academic Year: "$targetAcademicYear"
+- Active Election Semester: "$targetSemester"
 
-Instructions:
-1. Verify whether this image is a genuine Certificate of Registration (COR), official student study load, or enrollment assessment form from NEMSU or higher education.
-2. Extract the printed Student ID Number, Full Name, Department/College, Course/Program, Academic Year, and Semester.
-3. Compare the extracted ID and Full Name with the Expected details provided above (use case-insensitive comparison, allowing minor whitespace differences).
-4. Assign a Verdict:
-   - "VERIFIED": If the image is a valid COR and BOTH the Student ID and Full Name match the expected registration inputs with high certainty.
-   - "REJECTED": If the image is NOT a Certificate of Registration (e.g. random photo, meme, blank paper, invalid document) or shows a blatant student ID forgery / completely different person.
-   - "PENDING": If the image is blurry, low-resolution, partially obscured, or has minor name spelling variations that require manual Human Admin review.
-5. Provide a confidence score between 0.0 and 1.0.
-6. Provide a concise, professional reason explaining your findings.
+Document Structural & Authenticity Verification Criteria:
+An authentic NEMSU Certificate of Registration has specific visual, institutional, and tabular layout markers:
+1. Institutional Header & Branding (hasNemsuHeader):
+   - Institutional Name: "NORTH EASTERN MINDANAO STATE UNIVERSITY" (or legacy/campus name "Formerly Surigao del Sur State University" / "SDSSU" across any official NEMSU campus).
+   - University seal/logo and/or campus photo banner.
+   - Prominent blue banner title: "CERTIFICATE OF REGISTRATION".
+2. Enrollment & Student Details Block:
+   - Structured metadata fields including: Enrollment No., Student No./ID, Enrollment Date, Curriculum, School Year, Year Level, Student Type, Student Name, Course, Department, Scholarship/Grant.
+3. Class Schedule Table (hasScheduleTable):
+   - Dedicated table with header "CLASS SCHEDULE".
+   - Standard columns: SCHEDULE, SUBJECT NAME, SUBJECT DESCRIPTION, SECTION, UNITS, ROOM, DAYS, TIME, PAY UNITS.
+   - Table summary row showing TOTAL units.
+4. Official Certification Statement (hasCertification):
+   - Explicit institutional enrollment certification text: "This is to certify that the student whose name appears on this document is officially enrolled this term with subject load listed above."
+5. Official Signatures (hasRegistrarSignature):
+   - Underlined signature sections for "STUDENT SIGNATURE" and "REGISTRAR" (with Registrar name/office title).
+6. Notice & Metadata:
+   - "Notice to all Students :" / "Present this certificate of registration..." and bottom print timestamp metadata.
 
-Respond ONLY with a valid JSON object in the exact schema below, without markdown formatting or code blocks:
+Verification & Verdict Rules:
+- "isOfficialCOR": Set to true ONLY if the image possesses the layout and structural components of an authentic NEMSU COR. Set to false if it is arbitrary text, a blank canvas with typed letters, an ID card, a diploma, a syllabus, a screenshot of a form, or a fabricated mock document.
+- Student ID & Name Matching:
+  * Extract printed Student ID and Full Name using case-insensitive comparison, allowing minor whitespace or middle initial differences.
+- Academic Term Matching & Outdated COR Detection:
+  * Extract the printed School Year (e.g. "2025-2026 / 2ND SEMESTER", "2026-2027 1ST SEM") and normalize semester ("1st Sem", "1st Semester", "First Semester", "Sem 1" -> "1st Semester").
+  * If the document is from an older academic year or a different semester than $targetAcademicYear $targetSemester:
+    - Set "termMatched": false and "isOutdated": true.
+- Final Verdict & Reason:
+  * If "isOfficialCOR" is FALSE (e.g. mock/fake image, arbitrary text, non-COR image):
+    - "verdict": "REJECTED"
+    - "reason": "Rejected: Uploaded image is not an official NEMSU Certificate of Registration."
+  * If "isOfficialCOR" is TRUE, but "isOutdated" is TRUE ${enforceTerm ? '(and term enforcement is active)' : ''}:
+    - "verdict": "REJECTED"
+    - "reason": "Rejected: The uploaded Certificate of Registration is outdated."
+  * If "isOfficialCOR" is TRUE, Student ID matches, Full Name matches, and the document is for the active term ($targetAcademicYear $targetSemester):
+    - "verdict": "VERIFIED"
+    - "reason": "Official NEMSU COR verified. Student ID and Name match registered information."
+  * If "isOfficialCOR" is TRUE, but the image is blurry, low-resolution, or cropped such that text cannot be confidently verified:
+    - "verdict": "PENDING"
+    - "reason": "Document requires manual verification by COMSELEC admin."
+  * If "isOfficialCOR" is TRUE, but the Student ID or Name clearly does not match the registered user:
+    - "verdict": "REJECTED"
+    - "reason": "Rejected: Student information on COR does not match registration details."
+
+Respond ONLY with a valid JSON object matching the exact schema below, without markdown blocks or extra text:
 {
   "isCOR": true,
+  "isOfficialCOR": true,
+  "hasNemsuHeader": true,
+  "hasScheduleTable": true,
+  "hasCertification": true,
+  "hasRegistrarSignature": true,
   "detectedStudentId": "string",
   "detectedFullName": "string",
   "detectedDepartment": "string",
@@ -494,6 +619,8 @@ Respond ONLY with a valid JSON object in the exact schema below, without markdow
   "confidence": 0.95,
   "idMatched": true,
   "nameMatched": true,
+  "termMatched": true,
+  "isOutdated": false,
   "verdict": "VERIFIED",
   "reason": "Official NEMSU COR verified. Student ID and Name match registered information."
 }

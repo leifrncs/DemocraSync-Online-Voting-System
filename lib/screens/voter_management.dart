@@ -239,10 +239,24 @@ class _VoterManagementState extends State<VoterManagement> {
                         ],
                       ),
                       const SizedBox(height: 8),
+                      Text('• Document Format: ${aiAnalysis['isOfficialCOR'] == true ? 'Official NEMSU COR' : (aiAnalysis['isOfficialCOR'] == false ? 'INVALID / NON-OFFICIAL FORMAT' : 'Unspecified')}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: aiAnalysis['isOfficialCOR'] == true ? Colors.green.shade800 : (aiAnalysis['isOfficialCOR'] == false ? Colors.red.shade700 : null),
+                          )),
+                      if (aiAnalysis['hasNemsuHeader'] != null || aiAnalysis['hasScheduleTable'] != null)
+                        Text('• Structural Markers: Header: ${aiAnalysis['hasNemsuHeader'] == true ? '✓' : '✗'} | Schedule: ${aiAnalysis['hasScheduleTable'] == true ? '✓' : '✗'} | Cert: ${aiAnalysis['hasCertification'] == true ? '✓' : '✗'} | Registrar: ${aiAnalysis['hasRegistrarSignature'] == true ? '✓' : '✗'}',
+                            style: const TextStyle(fontSize: 11)),
                       Text('• Detected ID: ${aiAnalysis['detectedStudentId'] ?? 'N/A'} (Match: ${aiAnalysis['idMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
                       Text('• Detected Name: ${aiAnalysis['detectedFullName'] ?? 'N/A'} (Match: ${aiAnalysis['nameMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
                       if (aiAnalysis['academicYear'] != null && aiAnalysis['academicYear'] != 'N/A')
-                        Text('• Academic Period: ${aiAnalysis['semester'] ?? ''} ${aiAnalysis['academicYear'] ?? ''}', style: const TextStyle(fontSize: 11)),
+                        Text('• Academic Period: ${aiAnalysis['semester'] ?? ''} ${aiAnalysis['academicYear'] ?? ''} (Match: ${aiAnalysis['termMatched'] == true ? 'YES' : (aiAnalysis['isOutdated'] == true ? 'OUTDATED' : 'NO')})',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: aiAnalysis['isOutdated'] == true ? Colors.red.shade700 : null,
+                              fontWeight: aiAnalysis['isOutdated'] == true ? FontWeight.bold : FontWeight.normal,
+                            )),
                       const SizedBox(height: 4),
                       Text('• AI Notes: ${aiAnalysis['reason'] ?? 'None'}', style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontStyle: FontStyle.italic)),
                     ],
