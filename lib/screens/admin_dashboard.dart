@@ -50,7 +50,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       var votersSnap = await FirebaseFirestore.instance.collection('voters').get();
       var candidatesSnap = await FirebaseFirestore.instance.collection('candidates').get();
 
-      int totalVoters = votersSnap.docs.length;
+      int totalVoters = votersSnap.docs.where((doc) => (doc.data())['status'] == 'Verified').length;
       int totalVotes = votersSnap.docs.where((doc) => (doc.data())['hasVoted'] == true).length;
       double turnout = totalVoters > 0 ? (totalVotes / totalVoters) * 100 : 0;
 
@@ -432,16 +432,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
             final voters = votersSnapshot.data?.docs ?? [];
             final candidates = candidatesSnapshot.data?.docs ?? [];
 
-            int registeredVoters = voters.length;
+            int registeredVoters = 0;
             int totalVotes = 0;
             int pendingVerifications = 0;
             Map<String, int> deptTurnout = {};
 
             for (var doc in voters) {
               var data = doc.data() as Map<String, dynamic>;
-              if (data['status'] == 'Pending' || data['status'] == 'Pending Verification') {
+              String status = data['status']?.toString() ?? '';
+              
+              if (status == 'Verified') {
+                registeredVoters++;
+              } else if (status == 'Pending' || status == 'Pending Verification') {
                 pendingVerifications++;
               }
+
               if (data['hasVoted'] == true) {
                 totalVotes++;
                 String dept = data['department']?.toString() ?? 'Unknown';
