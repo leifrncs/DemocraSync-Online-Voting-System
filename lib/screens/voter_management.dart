@@ -92,8 +92,13 @@ class _VoterManagementState extends State<VoterManagement> {
         imageBytes: imageBytes,
         studentId: voter['id'],
         fullName: voter['name'],
+        firstName: voter['firstName'],
+        middleName: voter['middleName'],
+        lastName: voter['lastName'],
+        suffix: voter['suffix'],
         department: voter['dept'],
         course: voter['course'],
+        yearLevel: voter['yearLevel'] ?? '',
       );
 
       await FirebaseFirestore.instance.collection('voters').doc(voter['id']).update({
@@ -148,15 +153,21 @@ class _VoterManagementState extends State<VoterManagement> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _infoTile('Full Name', voter['name'], isBold: true),
-              _infoTile('Student ID', voter['id']),
-              _infoTile('Email Address', voter['email']),
-              const Divider(),
               Row(
                 children: [
-                  Expanded(child: _infoTile('Age', voter['age'].toString())),
-                  Expanded(child: _infoTile('Birth Date', voter['birthDate'])),
+                  Expanded(child: _infoTile('First Name', voter['firstName'].toString().isNotEmpty ? voter['firstName'] : voter['name'])),
+                  Expanded(child: _infoTile('Middle Name', voter['middleName'].toString().isNotEmpty ? voter['middleName'] : 'N/A')),
                 ],
               ),
+              Row(
+                children: [
+                  Expanded(child: _infoTile('Last Name', voter['lastName'].toString().isNotEmpty ? voter['lastName'] : 'N/A')),
+                  Expanded(child: _infoTile('Suffix', voter['suffix'].toString().isNotEmpty ? voter['suffix'] : 'None')),
+                ],
+              ),
+              const Divider(),
+              _infoTile('Student ID', voter['id']),
+              _infoTile('Email Address', voter['email']),
               const Divider(),
               _infoTile('Department', voter['dept']),
               _infoTile('Degree Program', voter['course']),
@@ -250,6 +261,12 @@ class _VoterManagementState extends State<VoterManagement> {
                             style: const TextStyle(fontSize: 11)),
                       Text('• Detected ID: ${aiAnalysis['detectedStudentId'] ?? 'N/A'} (Match: ${aiAnalysis['idMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
                       Text('• Detected Name: ${aiAnalysis['detectedFullName'] ?? 'N/A'} (Match: ${aiAnalysis['nameMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
+                      if (aiAnalysis['detectedYearLevel'] != null && aiAnalysis['detectedYearLevel'] != 'N/A')
+                        Text('• Year Level: ${aiAnalysis['detectedYearLevel']} (Match: ${aiAnalysis['yearLevelMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
+                      if (aiAnalysis['detectedCourse'] != null && aiAnalysis['detectedCourse'] != 'N/A')
+                        Text('• Course: ${aiAnalysis['detectedCourse']} (Match: ${aiAnalysis['courseMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
+                      if (aiAnalysis['detectedDepartment'] != null && aiAnalysis['detectedDepartment'] != 'N/A')
+                        Text('• Department: ${aiAnalysis['detectedDepartment']} (Match: ${aiAnalysis['departmentMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
                       if (aiAnalysis['academicYear'] != null && aiAnalysis['academicYear'] != 'N/A')
                         Text('• Academic Period: ${aiAnalysis['semester'] ?? ''} ${aiAnalysis['academicYear'] ?? ''} (Match: ${aiAnalysis['termMatched'] == true ? 'YES' : (aiAnalysis['isOutdated'] == true ? 'OUTDATED' : 'NO')})',
                             style: TextStyle(
@@ -439,8 +456,10 @@ class _VoterManagementState extends State<VoterManagement> {
                   return {
                     'id': doc.id,
                     'name': data['name'] ?? 'Unknown',
-                    'age': data['age'] ?? 'N/A',
-                    'birthDate': data['birthDate'] ?? 'N/A',
+                    'firstName': data['firstName'] ?? '',
+                    'middleName': data['middleName'] ?? '',
+                    'lastName': data['lastName'] ?? '',
+                    'suffix': data['suffix'] ?? '',
                     'email': data['email'] ?? 'N/A',
                     'yearLevel': data['yearLevel'] ?? 'N/A',
                     'dept': data['department'] ?? 'Unknown',

@@ -19,9 +19,10 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> {
   // --- CONTROLLERS ---
   final _studentIdController = TextEditingController();
-  final _fullNameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _birthDateController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _suffixController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -33,7 +34,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   String? _selectedDept;
   String? _selectedCourse;
   String? _selectedYear;
-  String? _selectedGender;
   PlatformFile? _pickedFile; 
   bool _agreedToTerms = false;
 
@@ -72,14 +72,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   };
 
   final List<String> _yearLevels = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year'];
-  final List<String> _genders = ['Male', 'Female', 'Other'];
 
   @override
   void dispose() {
     _studentIdController.dispose();
-    _fullNameController.dispose();
-    _ageController.dispose();
-    _birthDateController.dispose();
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
+    _suffixController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -110,20 +110,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (result != null) {
       setState(() {
         _pickedFile = result.files.first;
-      });
-    }
-  }
-
-  Future<void> _selectDate() async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 6570)), 
-      firstDate: DateTime(1990),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        _birthDateController.text = "${picked.year}-${picked.month}-${picked.day}";
       });
     }
   }
@@ -254,14 +240,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleRegistration() async {
     final email = _emailController.text.trim();
     final studentId = _studentIdController.text.trim();
-    final fullName = _fullNameController.text.trim();
+    final firstName = _firstNameController.text.trim();
+    final middleName = _middleNameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    final suffix = _suffixController.text.trim();
 
-    if (studentId.isEmpty || fullName.isEmpty) {
-      _showError('Please fill in all text fields.');
+    if (studentId.isEmpty || firstName.isEmpty || lastName.isEmpty) {
+      _showError('Please fill in all required text fields.');
       return;
     }
-    if (_selectedDept == null || _selectedCourse == null || _selectedYear == null || _selectedGender == null) {
-      _showError('Please select all dropdown options.');
+    if (_selectedDept == null || _selectedCourse == null || _selectedYear == null) {
+      _showError('Please select all academic dropdown options.');
       return;
     }
     if (!email.endsWith('@nemsu.edu.ph')) {
@@ -280,6 +269,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showError('Please agree to the Data Privacy Policy.');
       return;
     }
+
+    // Construct full name string from structured components
+    final fullName = [
+      firstName,
+      if (middleName.isNotEmpty) middleName,
+      lastName,
+      if (suffix.isNotEmpty) suffix,
+    ].join(' ');
 
     setState(() => _isLoading = true);
 
@@ -321,8 +318,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         imageBytes: imageBytes,
         studentId: studentId,
         fullName: fullName,
+        firstName: firstName,
+        middleName: middleName,
+        lastName: lastName,
+        suffix: suffix,
         department: _selectedDept!,
         course: _selectedCourse!,
+        yearLevel: _selectedYear!,
       );
 
       // Close scanning dialog
@@ -333,12 +335,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
       String hashedPassword = BCrypt.hashpw(_passwordController.text, BCrypt.gensalt());
       String assignedStatus = ocrResult.verdict; // 'Verified', 'Pending Verification', or 'Rejected'
 
-      // 3. Save Student Record with AI Analysis in Firestore
+      // 3. Save Student Record with AI Analysis in Firestore (Personal details age/birthDate/gender removed)
       await FirebaseFirestore.instance.collection('voters').doc(studentId).set({
+        'firstName': firstName,
+        'middleName': middleName.isNotEmpty ? middleName : null,
+        'lastName': lastName,
+        'suffix': suffix.isNotEmpty ? suffix : null,
         'name': fullName,
-        'age': _ageController.text.trim(),
-        'birthDate': _birthDateController.text,
-        'gender': _selectedGender,
         'department': _selectedDept,
         'course': _selectedCourse,
         'yearLevel': _selectedYear,
@@ -362,6 +365,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'Confidence': '${(ocrResult.confidence * 100).toInt()}%',
           'ID Matched': ocrResult.idMatched,
           'Name Matched': ocrResult.nameMatched,
+          'Year Level Matched': ocrResult.yearLevelMatched,
+          'Course Matched': ocrResult.courseMatched,
+          'Dept Matched': ocrResult.departmentMatched,
           'Detected ID': ocrResult.detectedStudentId,
           'Detected Name': ocrResult.detectedFullName,
           'Reason': ocrResult.reason,
@@ -376,8 +382,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
         barrierDismissible: false,
         builder: (context) => AiScanResultDialog(
           result: ocrResult,
-          inputStudentId: studentId,
-          inputFullName: fullName,
           onContinue: () {
             Navigator.pop(context); // Return to Login screen
           },
@@ -438,36 +442,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _sectionTitle('Personal Information'),
-                      _buildField(_fullNameController, 'Full Name', Icons.person_outline),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 2, 
-                              child: TextFormField(
-                                controller: _ageController,
-                                keyboardType: TextInputType.number,
-                                decoration: _buildInputDecoration('Age', Icons.cake_outlined),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              flex: 3, 
-                              child: TextFormField(
-                                controller: _birthDateController,
-                                readOnly: true,
-                                onTap: _selectDate,
-                                decoration: _buildInputDecoration('Birth Date', Icons.calendar_month_outlined),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    
-                      _buildDropdown('Gender', _genders, _selectedGender, (val) => setState(() => _selectedGender = val), Icons.wc_outlined),
+                      _sectionTitle('Student Information'),
+                      _buildField(_firstNameController, 'First Name', Icons.person_outline),
+                      _buildField(_middleNameController, 'Middle Name (Optional)', Icons.person_outline),
+                      _buildField(_lastNameController, 'Last Name', Icons.person_outline),
+                      _buildField(_suffixController, 'Suffix (e.g. Jr., III - Optional)', Icons.badge_outlined),
 
                       const SizedBox(height: 20),
                       _sectionTitle('Academic Details'),

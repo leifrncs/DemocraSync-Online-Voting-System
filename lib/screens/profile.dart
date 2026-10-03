@@ -110,6 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         String fullName = userData['name'] ?? '';
         String department = userData['department'] ?? '';
         String course = userData['course'] ?? '';
+        String yearLevel = userData['yearLevel'] ?? '';
 
         // 3. Launch interactive AI Vision OCR Scanning Dialog
         if (!mounted) return;
@@ -126,8 +127,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           imageBytes: imageBytes,
           studentId: widget.studentId,
           fullName: fullName,
+          firstName: userData['firstName'],
+          middleName: userData['middleName'],
+          lastName: userData['lastName'],
+          suffix: userData['suffix'],
           department: department,
           course: course,
+          yearLevel: yearLevel,
         );
 
         // Close scanning dialog
@@ -156,6 +162,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'Confidence': '${(ocrResult.confidence * 100).toInt()}%',
             'ID Matched': ocrResult.idMatched,
             'Name Matched': ocrResult.nameMatched,
+            'Year Level Matched': ocrResult.yearLevelMatched,
+            'Course Matched': ocrResult.courseMatched,
+            'Dept Matched': ocrResult.departmentMatched,
             'Detected ID': ocrResult.detectedStudentId,
             'Detected Name': ocrResult.detectedFullName,
             'Reason': ocrResult.reason,
@@ -170,8 +179,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           barrierDismissible: false,
           builder: (context) => AiScanResultDialog(
             result: ocrResult,
-            inputStudentId: widget.studentId,
-            inputFullName: fullName,
             onContinue: () {
               // Dialog dismissed
             },
@@ -308,11 +315,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               var data = snapshot.data!.data() as Map<String, dynamic>;
               
               String name = data['name'] ?? 'Unknown Student';
+              String firstName = data['firstName'] ?? '';
+              String middleName = data['middleName'] ?? '';
+              String lastName = data['lastName'] ?? '';
+              String suffix = data['suffix'] ?? '';
               String enrollmentStatus = data['status'] ?? 'Pending Verification';
               
-              String age = data['age']?.toString() ?? 'N/A';
-              String birthDate = data['birthDate'] ?? 'N/A';
-              String gender = data['gender'] ?? 'N/A';
               String department = data['department'] ?? 'N/A';
               String course = data['course'] ?? 'N/A';
               String yearLevel = data['yearLevel'] ?? 'N/A';
@@ -375,17 +383,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     
                     const SizedBox(height: 25),
 
-                    // --- 2. PERSONAL INFORMATION (READ-ONLY) ---
-                    _buildSectionHeader('Personal Information'),
+                    // --- 2. STUDENT INFORMATION (READ-ONLY) ---
+                    _buildSectionHeader('Student Information'),
                     Container(
                       decoration: _cardDecoration(),
                       child: Column(
                         children: [
-                          _buildReadOnlyRow(Icons.cake_outlined, 'Age', age),
+                          _buildReadOnlyRow(Icons.person_outline, 'First Name', firstName.isNotEmpty ? firstName : name),
                           const Divider(height: 1, indent: 50),
-                          _buildReadOnlyRow(Icons.calendar_month_outlined, 'Birth Date', birthDate),
+                          _buildReadOnlyRow(Icons.person_outline, 'Middle Name', middleName.isNotEmpty ? middleName : 'N/A'),
                           const Divider(height: 1, indent: 50),
-                          _buildReadOnlyRow(Icons.wc_outlined, 'Gender', gender),
+                          _buildReadOnlyRow(Icons.person_outline, 'Last Name', lastName.isNotEmpty ? lastName : 'N/A'),
+                          const Divider(height: 1, indent: 50),
+                          _buildReadOnlyRow(Icons.badge_outlined, 'Suffix', suffix.isNotEmpty ? suffix : 'None'),
                         ],
                       ),
                     ),

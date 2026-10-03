@@ -15,13 +15,18 @@ class OCRScanResult {
   final String detectedFullName;
   final String detectedDepartment;
   final String detectedCourse;
+  final String detectedYearLevel;
   final String academicYear;
   final String semester;
   final double confidence;
   final bool idMatched;
   final bool nameMatched;
+  final bool departmentMatched;
+  final bool courseMatched;
+  final bool yearLevelMatched;
   final bool termMatched;
   final bool isOutdated;
+  final List<String> mismatchedFields;
   final String verdict; // 'Verified', 'Pending Verification', 'Rejected'
   final String reason;
   final Map<String, dynamic> rawData;
@@ -37,13 +42,18 @@ class OCRScanResult {
     required this.detectedFullName,
     required this.detectedDepartment,
     required this.detectedCourse,
+    this.detectedYearLevel = 'N/A',
     required this.academicYear,
     required this.semester,
     required this.confidence,
     required this.idMatched,
     required this.nameMatched,
+    this.departmentMatched = true,
+    this.courseMatched = true,
+    this.yearLevelMatched = true,
     this.termMatched = true,
     this.isOutdated = false,
+    this.mismatchedFields = const [],
     required this.verdict,
     required this.reason,
     required this.rawData,
@@ -72,6 +82,24 @@ class OCRScanResult {
     bool termMatched = map['termMatched'] == true ||
         (map['termMatched'] == null && !isOutdated);
 
+    bool idMatched = map['idMatched'] == true;
+    bool nameMatched = map['nameMatched'] == true;
+    bool departmentMatched = map['departmentMatched'] == true || map['deptMatched'] == true;
+    bool courseMatched = map['courseMatched'] == true;
+    bool yearLevelMatched = map['yearLevelMatched'] == true;
+
+    List<String> mismatchedFields = [];
+    if (map['mismatchedFields'] is List) {
+      mismatchedFields = (map['mismatchedFields'] as List).map((e) => e.toString()).toList();
+    } else {
+      if (!idMatched) mismatchedFields.add('Student ID');
+      if (!nameMatched) mismatchedFields.add('Full Name');
+      if (!yearLevelMatched) mismatchedFields.add('Year Level');
+      if (!courseMatched) mismatchedFields.add('Degree Program / Course');
+      if (!departmentMatched) mismatchedFields.add('Department / College');
+      if (!termMatched) mismatchedFields.add('Academic Term');
+    }
+
     return OCRScanResult(
       isCOR: map['isCOR'] == true,
       isOfficialCOR: isOfficialCOR,
@@ -83,15 +111,20 @@ class OCRScanResult {
       detectedFullName: map['detectedFullName']?.toString() ?? 'N/A',
       detectedDepartment: map['detectedDepartment']?.toString() ?? 'N/A',
       detectedCourse: map['detectedCourse']?.toString() ?? 'N/A',
+      detectedYearLevel: map['detectedYearLevel']?.toString() ?? 'N/A',
       academicYear: map['academicYear']?.toString() ?? 'N/A',
       semester: map['semester']?.toString() ?? 'N/A',
       confidence: (map['confidence'] is num)
           ? (map['confidence'] as num).toDouble()
           : 0.85,
-      idMatched: map['idMatched'] == true,
-      nameMatched: map['nameMatched'] == true,
+      idMatched: idMatched,
+      nameMatched: nameMatched,
+      departmentMatched: departmentMatched,
+      courseMatched: courseMatched,
+      yearLevelMatched: yearLevelMatched,
       termMatched: termMatched,
       isOutdated: isOutdated,
+      mismatchedFields: mismatchedFields,
       verdict: normalizedVerdict,
       reason: map['reason']?.toString() ?? 'Verification processed.',
       rawData: map,
@@ -110,13 +143,18 @@ class OCRScanResult {
       detectedFullName: 'Manual Inspection Required',
       detectedDepartment: 'N/A',
       detectedCourse: 'N/A',
+      detectedYearLevel: 'N/A',
       academicYear: 'N/A',
       semester: 'N/A',
       confidence: 0.5,
       idMatched: false,
       nameMatched: false,
+      departmentMatched: false,
+      courseMatched: false,
+      yearLevelMatched: false,
       termMatched: false,
       isOutdated: false,
+      mismatchedFields: ['Manual Inspection Required'],
       verdict: 'Pending Verification',
       reason: reason,
       rawData: {'fallback': true, 'reason': reason},
@@ -135,13 +173,18 @@ class OCRScanResult {
       'detectedFullName': detectedFullName,
       'detectedDepartment': detectedDepartment,
       'detectedCourse': detectedCourse,
+      'detectedYearLevel': detectedYearLevel,
       'academicYear': academicYear,
       'semester': semester,
       'confidence': confidence,
       'idMatched': idMatched,
       'nameMatched': nameMatched,
+      'departmentMatched': departmentMatched,
+      'courseMatched': courseMatched,
+      'yearLevelMatched': yearLevelMatched,
       'termMatched': termMatched,
       'isOutdated': isOutdated,
+      'mismatchedFields': mismatchedFields,
       'verdict': verdict,
       'reason': reason,
       'scannedAt': FieldValue.serverTimestamp(),
@@ -515,13 +558,18 @@ class AiOcrService {
     }
   }
 
-  /// Analyzes a Certificate of Registration (COR) image with term validation & seamless multi-model fallback.
+  /// Analyzes a Certificate of Registration (COR) image with all-input cross-matching & seamless multi-model fallback.
   Future<OCRScanResult> analyzeCOR({
     required Uint8List imageBytes,
     required String studentId,
     required String fullName,
     required String department,
     required String course,
+    required String yearLevel,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? suffix,
     String? expectedAcademicYear,
     String? expectedSemester,
     String? mimeType,
@@ -548,13 +596,18 @@ class AiOcrService {
 
       final prompt = '''
 You are the official Document Verification & Anti-Spoofing AI for NEMSU (North Eastern Mindanao State University) DemocraSync election system.
-Carefully analyze this uploaded document image to verify whether it is a genuine, official NEMSU Certificate of Registration (COR) and validate the student's enrollment credentials.
+Carefully analyze this uploaded document image to verify whether it is a genuine, official NEMSU Certificate of Registration (COR) and cross-verify ALL submitted student registration inputs against the COR contents.
 
 Expected Student Registration Details:
 - Student ID Number: "$studentId"
 - Full Name: "$fullName"
-- Department: "$department"
+${firstName != null && firstName.isNotEmpty ? '- First Name: "$firstName"' : ''}
+${middleName != null && middleName.isNotEmpty ? '- Middle Name: "$middleName"' : ''}
+${lastName != null && lastName.isNotEmpty ? '- Last Name: "$lastName"' : ''}
+${suffix != null && suffix.isNotEmpty ? '- Suffix: "$suffix"' : ''}
+- Department / College: "$department"
 - Degree Program / Course: "$course"
+- Year Level: "$yearLevel"
 - Active Election Academic Year: "$targetAcademicYear"
 - Active Election Semester: "$targetSemester"
 
@@ -577,30 +630,46 @@ An authentic NEMSU Certificate of Registration has specific visual, institutiona
 6. Notice & Metadata:
    - "Notice to all Students :" / "Present this certificate of registration..." and bottom print timestamp metadata.
 
-Verification & Verdict Rules:
-- "isOfficialCOR": Set to true ONLY if the image possesses the layout and structural components of an authentic NEMSU COR. Set to false if it is arbitrary text, a blank canvas with typed letters, an ID card, a diploma, a syllabus, a screenshot of a form, or a fabricated mock document.
-- Student ID & Name Matching:
-  * Extract printed Student ID and Full Name using case-insensitive comparison, allowing minor whitespace or middle initial differences.
-- Academic Term Matching & Outdated COR Detection:
-  * Extract the printed School Year (e.g. "2025-2026 / 2ND SEMESTER", "2026-2027 1ST SEM") and normalize semester ("1st Sem", "1st Semester", "First Semester", "Sem 1" -> "1st Semester").
-  * If the document is from an older academic year or a different semester than $targetAcademicYear $targetSemester:
-    - Set "termMatched": false and "isOutdated": true.
-- Final Verdict & Reason:
-  * If "isOfficialCOR" is FALSE (e.g. mock/fake image, arbitrary text, non-COR image):
-    - "verdict": "REJECTED"
-    - "reason": "Rejected: Uploaded image is not an official NEMSU Certificate of Registration."
-  * If "isOfficialCOR" is TRUE, but "isOutdated" is TRUE ${enforceTerm ? '(and term enforcement is active)' : ''}:
-    - "verdict": "REJECTED"
-    - "reason": "Rejected: The uploaded Certificate of Registration is outdated."
-  * If "isOfficialCOR" is TRUE, Student ID matches, Full Name matches, and the document is for the active term ($targetAcademicYear $targetSemester):
-    - "verdict": "VERIFIED"
-    - "reason": "Official NEMSU COR verified. Student ID and Name match registered information."
-  * If "isOfficialCOR" is TRUE, but the image is blurry, low-resolution, or cropped such that text cannot be confidently verified:
-    - "verdict": "PENDING"
-    - "reason": "Document requires manual verification by COMSELEC admin."
-  * If "isOfficialCOR" is TRUE, but the Student ID or Name clearly does not match the registered user:
-    - "verdict": "REJECTED"
-    - "reason": "Rejected: Student information on COR does not match registration details."
+Semantic Cross-Verification & Matching Rules:
+1. "isOfficialCOR": Set to true ONLY if the image possesses the layout and structural components of an authentic NEMSU COR. Set to false if it is arbitrary text, a blank canvas with typed letters, an ID card, a diploma, a syllabus, a screenshot of a form, or a fabricated mock document.
+2. Student ID ("idMatched"):
+   - Extract printed Student ID/No. using case-insensitive comparison, allowing stripped whitespace or dashes (e.g. "23-01522" == "2301522").
+3. Full Name ("nameMatched"):
+   - Compare extracted name against "$fullName", allowing standard name order variations (e.g. "LASTNAME, FIRSTNAME MIDDLENAME/INITIAL SUFFIX" vs "FIRSTNAME MIDDLENAME LASTNAME SUFFIX"), minor whitespace, or middle initial differences.
+4. Year Level ("yearLevelMatched"):
+   - Extract printed Year Level and normalize across textual forms:
+     * "1st Year", "First Year", "1", "1st" == "1st Year"
+     * "2nd Year", "Second Year", "2", "2nd" == "2nd Year"
+     * "3rd Year", "Third Year", "3", "3rd" == "3rd Year"
+     * "4th Year", "Fourth Year", "4", "4th" == "4th Year"
+     * "5th Year", "Fifth Year", "5", "5th" == "5th Year"
+   - Match against expected "$yearLevel".
+5. Degree Program / Course ("courseMatched"):
+   - Normalize and match against expected "$course". Equate acronyms and full titles (e.g., "BSCS" or "BACHELOR OF SCIENCE IN COMPUTER SCIENCE" == "Bachelor of Science in Computer Science", "BSCE" == "Bachelor of Science in Civil Engineering").
+6. Department / College ("departmentMatched"):
+   - Normalize and match against expected "$department". Allow official campus acronyms and college reorganizations (e.g. "College of Information Technology Education", "CITE", "College of Engineering, Computer Studies and Technology", "CECST").
+7. Academic Term ("termMatched", "isOutdated"):
+   - Extract the printed School Year (e.g. "2025-2026 / 2ND SEMESTER", "2026-2027 1ST SEM") and normalize semester ("1st Sem", "1st Semester", "First Semester", "Sem 1" -> "1st Semester").
+   - If the document is from an older academic year or different semester than "$targetAcademicYear $targetSemester":
+     - Set "termMatched": false and "isOutdated": true.
+
+Verdict & Rejection Reason Generation:
+- If "isOfficialCOR" is FALSE:
+  * "verdict": "REJECTED"
+  * "reason": "Rejected: Uploaded image is not an official NEMSU Certificate of Registration."
+- If "isOfficialCOR" is TRUE, but "isOutdated" is TRUE ${enforceTerm ? '(and term enforcement is active)' : ''}:
+  * "verdict": "REJECTED"
+  * "reason": "Rejected: The uploaded Certificate of Registration is outdated."
+- If "isOfficialCOR" is TRUE, but one or more registration inputs do not match:
+  * Collect all mismatched field names in "mismatchedFields" array (for admin audit).
+  * "verdict": "REJECTED"
+  * "reason": "Rejected: Registration details do not match the uploaded COR."
+- If "isOfficialCOR" is TRUE, all registration inputs match (idMatched, nameMatched, yearLevelMatched, courseMatched, departmentMatched, termMatched all true), and document is for active term:
+  * "verdict": "VERIFIED"
+  * "reason": "Official NEMSU COR verified. Registration details match."
+- If "isOfficialCOR" is TRUE, but the image is blurry or cropped such that details cannot be confidently confirmed:
+  * "verdict": "PENDING"
+  * "reason": "Document queued for manual verification by COMSELEC admin."
 
 Respond ONLY with a valid JSON object matching the exact schema below, without markdown blocks or extra text:
 {
@@ -614,15 +683,20 @@ Respond ONLY with a valid JSON object matching the exact schema below, without m
   "detectedFullName": "string",
   "detectedDepartment": "string",
   "detectedCourse": "string",
+  "detectedYearLevel": "string",
   "academicYear": "string",
   "semester": "string",
   "confidence": 0.95,
   "idMatched": true,
   "nameMatched": true,
+  "departmentMatched": true,
+  "courseMatched": true,
+  "yearLevelMatched": true,
   "termMatched": true,
   "isOutdated": false,
+  "mismatchedFields": [],
   "verdict": "VERIFIED",
-  "reason": "Official NEMSU COR verified. Student ID and Name match registered information."
+  "reason": "Official NEMSU COR verified. All registration details match."
 }
 ''';
 
