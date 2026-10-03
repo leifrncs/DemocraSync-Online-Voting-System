@@ -497,29 +497,60 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             double screenWidth = MediaQuery.of(context).size.width;
 
-            Widget card1 = _buildKPICard(Icons.how_to_reg, 'Registered Voters', registeredVoters.toString(), nemsuBlue);
-            Widget card2 = _buildKPICard(Icons.how_to_vote, 'Total Votes', totalVotes.toString(), Colors.purple);
+            Widget card1 = _buildKPICard(Icons.how_to_reg_rounded, 'Registered Voters', registeredVoters.toString(), nemsuBlue);
+            Widget card2 = _buildKPICard(Icons.how_to_vote_rounded, 'Total Votes Cast', totalVotes.toString(), const Color(0xFF7C3AED));
             Widget card3 = _buildTurnoutCard(turnoutPercentage);
-            Widget card4 = _buildKPICard(Icons.warning_amber_rounded, 'Pending Verifications', pendingVerifications.toString(), Colors.redAccent);
+            Widget card4 = _buildKPICard(Icons.pending_actions_rounded, 'Pending Verifications', pendingVerifications.toString(), const Color(0xFFE11D48));
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Election Overview', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                  const Text('Live Real-Time Data', style: TextStyle(color: Colors.grey)),
-                  const SizedBox(height: 24),
+                  // --- SECTION HEADER ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Election Overview',
+                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Real-time voter turnout and candidate tally statistics',
+                            style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                  // 👉 THE FIX: IntrinsicHeight makes all cards perfectly matched in height!
+                  // --- KPI METRIC CARDS ---
                   if (screenWidth > 900)
                     IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(child: card1), const SizedBox(width: 16),
-                          Expanded(child: card2), const SizedBox(width: 16),
-                          Expanded(child: card3), const SizedBox(width: 16),
+                          Expanded(child: card1), const SizedBox(width: 14),
+                          Expanded(child: card2), const SizedBox(width: 14),
+                          Expanded(child: card3), const SizedBox(width: 14),
                           Expanded(child: card4),
                         ],
                       ),
@@ -531,67 +562,102 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(child: card1), const SizedBox(width: 12),
+                              Expanded(child: card1), const SizedBox(width: 10),
                               Expanded(child: card2),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         IntrinsicHeight(
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(child: card3), const SizedBox(width: 12),
+                              Expanded(child: card3), const SizedBox(width: 10),
                               Expanded(child: card4),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 18),
 
-                  if (screenWidth > 800) 
+                  // --- CHARTS SECTION (COMPACT & BEAUTIFUL) ---
+                  if (screenWidth > 850) 
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildPieChartCard(deptTurnout)),
+                        Expanded(child: _buildPieChartCard(deptTurnout, totalVotes, screenWidth)),
                         const SizedBox(width: 16),
                         Expanded(child: _buildBarChartCard(chartPositionVotes)),
                       ],
                     )
                   else ...[
-                    _buildPieChartCard(deptTurnout),
+                    _buildPieChartCard(deptTurnout, totalVotes, screenWidth),
                     const SizedBox(height: 16),
                     _buildBarChartCard(chartPositionVotes),
                   ],
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 18),
 
+                  // --- LIVE TALLY BOARD ---
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Wrap(
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 16,
-                          runSpacing: 16,
+                          spacing: 12,
+                          runSpacing: 12,
                           children: [
-                            const Text('Live Tally Board', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: nemsuBlue.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.leaderboard_rounded, color: nemsuBlue, size: 18),
+                                ),
+                                const SizedBox(width: 10),
+                                const Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Live Tally Board', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                                    Text('Select scope to inspect candidate standings', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                  ],
+                                ),
+                              ],
+                            ),
                             Container(
-                              constraints: const BoxConstraints(maxWidth: 300), 
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              constraints: const BoxConstraints(maxWidth: 320), 
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF0F4F8),
+                                color: const Color(0xFFF8FAFC),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFCBD5E1)),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   isExpanded: true,
                                   value: _selectedTallyScope,
-                                  icon: const Icon(Icons.arrow_drop_down, color: nemsuBlue),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: nemsuBlue),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: nemsuBlue),
                                   items: _tallyScopes.map<DropdownMenuItem<String>>((String scope) {
                                     return DropdownMenuItem<String>(
                                       value: scope,
@@ -606,25 +672,64 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ),
                           ],
                         ),
-                        const Divider(height: 30, color: nemsuGold, thickness: 2),
+                        const SizedBox(height: 14),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0), thickness: 1),
+                        const SizedBox(height: 12),
 
                         if (scopedCandidates.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(20.0),
-                            child: Center(child: Text("No candidates found for this department.", style: TextStyle(color: Colors.grey))),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 36.0),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  Icon(Icons.inbox_outlined, size: 40, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text("No candidates registered for $_selectedTallyScope", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                                ],
+                              ),
+                            ),
                           )
                         else
                           for (var entry in scopedCandidates.entries)
                             Builder(
                               builder: (context) {
                                 int totalPosVotes = entry.value.fold(0, (sum, item) => sum + ((item['voteCount'] as num?)?.toInt() ?? 0));
+                                int topVotes = entry.value.isNotEmpty ? ((entry.value.first['voteCount'] as num?)?.toInt() ?? 0) : 0;
                                 
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                                      child: Text(entry.key, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.black87)),
+                                      padding: const EdgeInsets.only(top: 14.0, bottom: 8.0),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 4,
+                                            height: 14,
+                                            decoration: BoxDecoration(
+                                              color: nemsuGold,
+                                              borderRadius: BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            entry.key.toUpperCase(),
+                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: 0.5),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF1F5F9),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              '$totalPosVotes total votes',
+                                              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                     for (var candidate in entry.value)
                                       Builder(
@@ -633,8 +738,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           String party = candidate['party']?.toString() ?? 'Independent';
                                           int cVotes = (candidate['voteCount'] as num?)?.toInt() ?? 0;
                                           double pct = totalPosVotes > 0 ? cVotes / totalPosVotes : 0.0;
+                                          bool isLeading = topVotes > 0 && cVotes == topVotes;
                                           
-                                          return _buildTallyRow(name, party, cVotes, pct);
+                                          return _buildTallyRow(name, party, cVotes, pct, isLeading);
                                         }
                                       )
                                   ],
@@ -653,64 +759,194 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildPieChartCard(Map<String, int> deptTurnout) {
-    List<Color> colors = [nemsuBlue, nemsuGold, Colors.purple, Colors.teal, Colors.orange];
-    int colorIndex = 0;
+  Widget _buildPieChartCard(Map<String, int> deptTurnout, int totalVotes, double screenWidth) {
+    const List<Color> colors = [
+      nemsuBlue,
+      Color(0xFFD4AF37),
+      Color(0xFF10B981),
+      Color(0xFF6366F1),
+      Color(0xFF8B5CF6),
+      Color(0xFFF59E0B),
+      Color(0xFF06B6D4),
+    ];
 
     List<PieChartSectionData> sections = [];
+    int colorIndex = 0;
+
     for (var entry in deptTurnout.entries) {
       final color = colors[colorIndex % colors.length];
       colorIndex++;
+      final double pct = totalVotes > 0 ? (entry.value / totalVotes) * 100 : 0;
       sections.add(
         PieChartSectionData(
           color: color,
           value: entry.value.toDouble(),
-          title: entry.value.toString(),
-          radius: 50,
-          titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+          showTitle: false,
+          radius: 20,
+          badgeWidget: null,
+          title: '${pct.toStringAsFixed(0)}%',
         )
       );
     }
 
     return Container(
-      height: 420, 
+      height: 290,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Turnout by Department', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 14)),
-          Expanded(
-            child: sections.isEmpty 
-              ? const Center(child: Text("No votes cast yet", style: TextStyle(color: Colors.grey)))
-              : PieChart(
-                  PieChartData(
-                    sections: sections,
-                    centerSpaceRadius: 40,
-                    sectionsSpace: 2,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: nemsuBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.donut_large_rounded, color: nemsuBlue, size: 16),
                   ),
-                ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 60,
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: deptTurnout.keys.toList().asMap().entries.map<Widget>((e) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, color: colors[e.key % colors.length], size: 10),
-                      const SizedBox(width: 4),
-                      Text(e.value, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                    ],
-                  );
-                }).toList(),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Turnout by Department',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 13),
+                  ),
+                ],
               ),
-            ),
-          )
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$totalVotes Cast',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: nemsuBlue),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: sections.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.pie_chart_outline_rounded, size: 36, color: Colors.grey.shade300),
+                        const SizedBox(height: 6),
+                        Text("No votes cast yet", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                      ],
+                    ),
+                  )
+                : Row(
+                    children: [
+                      // Donut Chart with Center Metric
+                      SizedBox(
+                        width: 140,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            PieChart(
+                              PieChartData(
+                                sections: sections,
+                                centerSpaceRadius: 40,
+                                sectionsSpace: 2,
+                                pieTouchData: PieTouchData(
+                                  enabled: true,
+                                ),
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '$totalVotes',
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: nemsuBlue),
+                                ),
+                                const Text(
+                                  'Votes',
+                                  style: TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Compact Legend List
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: deptTurnout.entries.toList().asMap().entries.map<Widget>((entry) {
+                              int idx = entry.key;
+                              var item = entry.value;
+                              Color itemColor = colors[idx % colors.length];
+                              double pct = totalVotes > 0 ? (item.value / totalVotes) * 100 : 0.0;
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 3.0),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: itemColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        item.key,
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${item.value}',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: itemColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '${pct.toStringAsFixed(0)}%',
+                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: itemColor),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
@@ -720,56 +956,180 @@ class _AdminDashboardState extends State<AdminDashboard> {
     List<BarChartGroupData> barGroups = [];
     List<String> titles = [];
     int index = 0;
+    int maxVote = 0;
 
     positionVotes.forEach((key, value) {
-      titles.add(key.replaceAll(' ', '\n')); 
+      if (value > maxVote) maxVote = value;
+      // Abbreviate long names for bottom axis
+      String shortTitle = key
+          .replaceAll('Vice President', 'VP')
+          .replaceAll('President', 'Pres.')
+          .replaceAll('Representative', 'Rep.')
+          .replaceAll('Secretary', 'Sec.')
+          .replaceAll('Treasurer', 'Treas.')
+          .replaceAll('Auditor', 'Aud.')
+          .replaceAll('Senator', 'Sen.');
+      titles.add(shortTitle);
+      
       barGroups.add(
         BarChartGroupData(
           x: index,
           barRods: [
-            BarChartRodData(toY: value.toDouble(), color: nemsuBlue, width: 16, borderRadius: BorderRadius.circular(4)),
+            BarChartRodData(
+              toY: value.toDouble(),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF003366), Color(0xFF2563EB)],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              width: 14,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+              backDrawRodData: BackgroundBarChartRodData(
+                show: true,
+                toY: maxVote > 0 ? (maxVote * 1.15).toDouble() : 10,
+                color: const Color(0xFFF1F5F9),
+              ),
+            ),
           ],
         )
       );
       index++;
     });
 
+    double maxY = (maxVote > 0 ? maxVote * 1.2 : 10).toDouble();
+
     return Container(
-      height: 420, 
+      height: 290,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Votes per Position', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 14)),
-          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: nemsuBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.bar_chart_rounded, color: nemsuBlue, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Votes per Position',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 13),
+                  ),
+                ],
+              ),
+              const Text(
+                'Hover/tap for details',
+                style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Expanded(
             child: barGroups.isEmpty 
-              ? const Center(child: Text("No votes cast yet", style: TextStyle(color: Colors.grey)))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.bar_chart_outlined, size: 36, color: Colors.grey.shade300),
+                      const SizedBox(height: 6),
+                      Text("No votes cast yet", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                    ],
+                  ),
+                )
               : BarChart(
                   BarChartData(
                     alignment: BarChartAlignment.spaceAround,
-                    maxY: positionVotes.values.fold(0, (max, v) => v > max ? v : max).toDouble() + 5, 
-                    barTouchData: BarTouchData(enabled: false),
+                    maxY: maxY,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (group) => nemsuSlate,
+                        tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          String fullPos = positionVotes.keys.elementAt(group.x.toInt());
+                          return BarTooltipItem(
+                            '$fullPos\n',
+                            const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.normal),
+                            children: [
+                              TextSpan(
+                                text: '${rod.toY.toInt()} Votes',
+                                style: const TextStyle(color: nemsuGold, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                     titlesData: FlTitlesData(
                       show: true,
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
+                          reservedSize: 32,
                           getTitlesWidget: (double value, TitleMeta meta) {
-                            if (value.toInt() >= titles.length) return const SizedBox.shrink();
+                            int idx = value.toInt();
+                            if (idx < 0 || idx >= titles.length) return const SizedBox.shrink();
                             return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(titles[value.toInt()], style: const TextStyle(color: Colors.grey, fontSize: 8), textAlign: TextAlign.center),
+                              padding: const EdgeInsets.only(top: 6.0),
+                              child: Text(
+                                titles[idx],
+                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 9, fontWeight: FontWeight.w500),
+                                textAlign: TextAlign.center,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ),
                             );
                           },
                         ),
                       ),
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 26,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            if (value == meta.max || value == meta.min) {
+                              return const SizedBox.shrink();
+                            }
+                            return Text(
+                              value.toInt().toString(),
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9),
+                              textAlign: TextAlign.left,
+                            );
+                          },
+                        ),
+                      ),
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
-                    gridData: const FlGridData(show: false),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) {
+                        return const FlLine(
+                          color: Color(0xFFF1F5F9),
+                          strokeWidth: 1,
+                        );
+                      },
+                    ),
                     borderData: FlBorderData(show: false),
                     barGroups: barGroups,
                   ),
@@ -780,20 +1140,53 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  // 👉 THE FIX: Simplified internal column layout for smooth stretching
   Widget _buildKPICard(IconData icon, String title, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16), 
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))]),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), 
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center, 
         children: [
-          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: Icon(icon, color: color, size: 20)),
-          const SizedBox(height: 12), 
-          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color))),
-          const SizedBox(height: 4),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10), 
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color, letterSpacing: -0.5),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
@@ -801,60 +1194,183 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Widget _buildTurnoutCard(double percentage) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))]),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center, 
         children: [
-          Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: nemsuGold.withOpacity(0.2), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.data_usage, color: nemsuGold, size: 20)),
-          const SizedBox(height: 12),
-          FittedBox(fit: BoxFit.scaleDown, child: Text('${(percentage * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: nemsuGold))),
-          const SizedBox(height: 4),
-          const Text('Voter Turnout', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8), 
-          ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(value: percentage, minHeight: 6, backgroundColor: Colors.grey.shade200, valueColor: const AlwaysStoppedAnimation<Color>(nemsuGold)))
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.pie_chart_rounded, color: Color(0xFFB45309), size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${(percentage * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Color(0xFFB45309), letterSpacing: -0.5),
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Voter Turnout',
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6), 
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: percentage.clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD4AF37)),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTallyRow(String name, String party, int votes, double percentage) {
-    return Card(
-      elevation: 0, color: const Color(0xFFF8F9FA), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade300)),
+  Widget _buildTallyRow(String name, String party, int votes, double percentage, bool isLeading) {
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            const CircleAvatar(backgroundColor: nemsuGold, child: Icon(Icons.person, color: nemsuBlue)),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text(party, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-                ],
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('$votes Votes', style: const TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue)),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(value: percentage, minHeight: 8, backgroundColor: Colors.grey.shade300, valueColor: const AlwaysStoppedAnimation<Color>(nemsuBlue)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: isLeading ? const Color(0xFFFFFDF5) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isLeading ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+          width: isLeading ? 1.2 : 1.0,
         ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isLeading ? const Color(0xFFFEF3C7) : nemsuBlue.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isLeading ? Icons.workspace_premium_rounded : Icons.person_rounded,
+              color: isLeading ? const Color(0xFFB45309) : nemsuBlue,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isLeading) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFFCD34D), width: 0.8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star_rounded, size: 10, color: Color(0xFFB45309)),
+                            SizedBox(width: 2),
+                            Text(
+                              'LEADING',
+                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Color(0xFFB45309), letterSpacing: 0.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  party,
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$votes',
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: nemsuBlue, fontSize: 13),
+                    ),
+                    const Text(
+                      ' votes',
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '(${(percentage * 100).toStringAsFixed(1)}%)',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isLeading ? const Color(0xFFB45309) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: percentage.clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: const Color(0xFFE2E8F0),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isLeading ? const Color(0xFFD4AF37) : nemsuBlue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
