@@ -3,6 +3,7 @@ import '../constants.dart';
 
 class DashboardScreen extends StatelessWidget {
   final VoidCallback onNavigateToBallot;
+  final VoidCallback? onViewVotes;
 
   final String studentName; 
   final String studentDept;
@@ -12,6 +13,7 @@ class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
     super.key, 
     required this.onNavigateToBallot,
+    this.onViewVotes,
     required this.studentName, 
     required this.studentDept,
     required this.hasVoted,
@@ -21,11 +23,12 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 👉 Helper variables to determine button styling
-    bool isButtonDisabled = hasVoted || !isElectionActive;
+    // If student has voted, they can always view their votes even if election is closed
+    bool isButtonDisabled = !hasVoted && !isElectionActive;
     
     String buttonText = 'PROCEED TO BALLOT';
     if (hasVoted) {
-      buttonText = 'VOTE CASTED';
+      buttonText = 'VIEW MY CASTED BALLOT';
     } else if (!isElectionActive) {
       buttonText = 'ELECTION CLOSED';
     }
@@ -100,16 +103,25 @@ class DashboardScreen extends StatelessWidget {
                     SizedBox(
                       width: double.infinity, // Forces the button to stretch nicely across the column
                       height: 55,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isButtonDisabled ? Colors.grey.shade400 : nemsuBlue,
+                          backgroundColor: hasVoted 
+                              ? nemsuGold 
+                              : (isButtonDisabled ? Colors.grey.shade400 : nemsuBlue),
+                          elevation: hasVoted ? 2 : 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        onPressed: isButtonDisabled ? null : onNavigateToBallot, 
-                        child: Text(
+                        icon: Icon(
+                          hasVoted ? Icons.receipt_long_rounded : Icons.how_to_vote_rounded,
+                          color: hasVoted ? nemsuBlue : (isButtonDisabled ? Colors.grey.shade700 : Colors.white),
+                        ),
+                        onPressed: isButtonDisabled 
+                            ? null 
+                            : (hasVoted ? (onViewVotes ?? onNavigateToBallot) : onNavigateToBallot), 
+                        label: Text(
                           buttonText, 
                           style: TextStyle(
-                            color: isButtonDisabled ? Colors.grey.shade700 : Colors.white, 
+                            color: hasVoted ? nemsuBlue : (isButtonDisabled ? Colors.grey.shade700 : Colors.white), 
                             fontWeight: FontWeight.bold, 
                             fontSize: 16,
                             letterSpacing: 1.2,

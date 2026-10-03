@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import '../widgets/logout_dialog.dart';
+import '../widgets/voting_receipt_dialog.dart';
 import 'dashboard.dart';
 import 'ballot.dart';     
 import 'profile.dart';    
@@ -110,19 +111,50 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: nemsuBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            SizedBox(
+              width: 260,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: nemsuGold,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 1,
+                ),
+                onPressed: () {
+                  showVotingReceiptDialog(
+                    context,
+                    studentId: widget.studentId,
+                    studentName: widget.studentName,
+                    studentDept: widget.studentDept,
+                  );
+                },
+                icon: const Icon(Icons.receipt_long_rounded, color: nemsuBlue),
+                label: const Text(
+                  'View My Casted Ballot',
+                  style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
               ),
-              onPressed: () {
-                setState(() {
-                  _selectedIndex = 0; 
-                });
-              },
-              icon: const Icon(Icons.home_rounded, color: Colors.white),
-              label: const Text('Return to Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 260,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: nemsuBlue, width: 1.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _selectedIndex = 0; 
+                  });
+                },
+                icon: const Icon(Icons.home_rounded, color: nemsuBlue),
+                label: const Text(
+                  'Return to Dashboard',
+                  style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             const Divider(),
@@ -147,6 +179,14 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
           studentDept: widget.studentDept,
           hasVoted: hasVoted, 
           isElectionActive: isElectionActive, // Pass it down to the dashboard
+          onViewVotes: () {
+            showVotingReceiptDialog(
+              context,
+              studentId: widget.studentId,
+              studentName: widget.studentName,
+              studentDept: widget.studentDept,
+            );
+          },
           onNavigateToBallot: () => setState(() => _selectedIndex = 1),
         );
       case 1: 
