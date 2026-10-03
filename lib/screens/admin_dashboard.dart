@@ -497,10 +497,31 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
             double screenWidth = MediaQuery.of(context).size.width;
 
-            Widget card1 = _buildKPICard(Icons.how_to_reg_rounded, 'Registered Voters', registeredVoters.toString(), nemsuBlue);
-            Widget card2 = _buildKPICard(Icons.how_to_vote_rounded, 'Total Votes Cast', totalVotes.toString(), const Color(0xFF7C3AED));
-            Widget card3 = _buildTurnoutCard(turnoutPercentage);
-            Widget card4 = _buildKPICard(Icons.pending_actions_rounded, 'Pending Verifications', pendingVerifications.toString(), const Color(0xFFE11D48));
+            Widget card1 = _buildKPICard(
+              Icons.how_to_reg_rounded,
+              'Registered Voters',
+              registeredVoters.toString(),
+              nemsuBlue,
+              'Total verified students eligible to vote in the active election.',
+            );
+            Widget card2 = _buildKPICard(
+              Icons.how_to_vote_rounded,
+              'Total Votes Cast',
+              totalVotes.toString(),
+              const Color(0xFF7C3AED),
+              'Total encrypted and submitted ballots across all campus colleges.',
+            );
+            Widget card3 = _buildTurnoutCard(
+              turnoutPercentage,
+              description: 'Percentage of registered student voters who have completed voting.',
+            );
+            Widget card4 = _buildKPICard(
+              Icons.pending_actions_rounded,
+              'Pending Verifications',
+              pendingVerifications.toString(),
+              const Color(0xFFE11D48),
+              'Student COR documents and ID registrations awaiting verification.',
+            );
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
@@ -1140,60 +1161,105 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildKPICard(IconData icon, String title, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), 
+  Widget _buildKPICard(IconData icon, String title, String value, Color color, String description) {
+    return Tooltip(
+      message: description,
+      waitDuration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: nemsuSlate,
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center, 
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10), 
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color, letterSpacing: -0.5),
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 1.3,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16), 
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            title,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center, 
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10), 
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: color, letterSpacing: -0.5),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTurnoutCard(double percentage) {
-    return Container(
+  Widget _buildTurnoutCard(double percentage, {String description = 'Percentage of registered student voters who have completed voting.'}) {
+    return Tooltip(
+      message: description,
+      waitDuration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: nemsuSlate,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 1.3,
+      ),
+      child: Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1249,8 +1315,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTallyRow(String name, String party, int votes, double percentage, bool isLeading) {
     return Container(
