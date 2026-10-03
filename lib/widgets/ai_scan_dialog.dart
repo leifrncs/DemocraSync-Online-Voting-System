@@ -4,7 +4,10 @@ import '../services/ai_ocr_service.dart';
 
 class AiScanningDialog extends StatelessWidget {
   final String statusText;
-  const AiScanningDialog({super.key, required this.statusText});
+  const AiScanningDialog({
+    super.key,
+    this.statusText = 'Verifying Certificate of Registration (COR)... Please wait.',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +22,7 @@ class AiScanningDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: nemsuBlue.withOpacity(0.08),
+                color: nemsuBlue.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: const SizedBox(
@@ -33,7 +36,7 @@ class AiScanningDialog extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             const Text(
-              'AI Vision Verification',
+              'Document Verification',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: nemsuBlue),
             ),
             const SizedBox(height: 8),
@@ -41,25 +44,6 @@ class AiScanningDialog extends StatelessWidget {
               statusText,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: nemsuBackground,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.auto_awesome_rounded, color: nemsuGold, size: 16),
-                  SizedBox(width: 6),
-                  Text(
-                    'Gemini AI Document Scanner',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: nemsuBlue),
-                  ),
-                ],
-              ),
             ),
           ],
         ),

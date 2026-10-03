@@ -112,13 +112,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         String course = userData['course'] ?? '';
         String yearLevel = userData['yearLevel'] ?? '';
 
-        // 3. Launch interactive AI Vision OCR Scanning Dialog
+        // 3. Launch interactive Document Verification Scanning Dialog
         if (!mounted) return;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (context) => const AiScanningDialog(
-            statusText: 'Analyzing updated Certificate of Registration (COR) with Gemini Vision AI...',
+            statusText: 'Verifying Certificate of Registration (COR)... Please wait.',
           ),
         );
 

@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
 import '../widgets/logout_dialog.dart';
+import '../widgets/real_time_clock.dart';
 import 'voter_management.dart';
 import 'candidate_management.dart';
 import 'election_configuration.dart';
@@ -228,6 +229,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Center(
+              child: RealTimeClock(
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
+                textColor: Colors.white,
+                iconColor: nemsuGold,
+                borderColor: nemsuGold.withValues(alpha: 0.35),
+                fontSize: 11,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              ),
+            ),
+          ),
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance.collection('settings').doc('election').snapshots(),
             builder: (context, snapshot) {

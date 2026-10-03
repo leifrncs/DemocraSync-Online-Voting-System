@@ -148,7 +148,7 @@ class DashboardScreen extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: nemsuGold.withOpacity(0.2), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: nemsuGold.withValues(alpha: 0.2), shape: BoxShape.circle),
           child: Icon(icon, color: nemsuBlue, size: 28),
         ),
         const SizedBox(width: 16),

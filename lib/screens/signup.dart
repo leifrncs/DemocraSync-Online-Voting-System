@@ -303,13 +303,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      // 1. Launch interactive AI Vision OCR Scanning Dialog
+      // 1. Launch interactive Document Verification Scanning Dialog
       if (!mounted) return;
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => const AiScanningDialog(
-          statusText: 'Analyzing Certificate of Registration (COR) and verifying enrollment with Gemini Vision AI...',
+          statusText: 'Verifying Certificate of Registration (COR)... Please wait.',
         ),
       );
 

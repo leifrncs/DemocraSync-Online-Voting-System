@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import '../widgets/logout_dialog.dart';
 import '../widgets/voting_receipt_dialog.dart';
+import '../widgets/real_time_clock.dart';
 import 'dashboard.dart';
 import 'ballot.dart';     
 import 'profile.dart';    
@@ -248,6 +249,19 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                   ],
                 ),
                 actions: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Center(
+                      child: RealTimeClock(
+                        backgroundColor: nemsuBackground,
+                        textColor: nemsuBlue,
+                        iconColor: nemsuGold,
+                        borderColor: nemsuGold.withValues(alpha: 0.35),
+                        fontSize: 11,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      ),
+                    ),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
                     tooltip: 'Logout',

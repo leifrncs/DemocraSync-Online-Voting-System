@@ -80,7 +80,7 @@ class _VoterManagementState extends State<VoterManagement> {
         children: [
           SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
           SizedBox(width: 12),
-          Text('Running Gemini AI OCR analysis...'),
+          Text('Verifying Certificate of Registration (COR)...'),
         ],
       ),
       duration: Duration(seconds: 4),
