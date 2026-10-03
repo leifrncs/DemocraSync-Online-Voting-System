@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fl_chart/fl_chart.dart'; 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import '../constants.dart';
-import 'login.dart'; 
+import '../widgets/logout_dialog.dart';
 import 'voter_management.dart';
 import 'candidate_management.dart';
 import 'election_configuration.dart';
@@ -327,22 +326,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     _buildNavItem(Icons.assignment_rounded, 4),
                     const Spacer(),
                     IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.redAccent),
-                    tooltip: 'Logout',
-                    onPressed: () async {
-                      // 1. Clear the persistent session
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear(); 
-
-                      // 2. Navigate away safely
-                      if (!mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context, 
-                        MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                        (route) => false, // Clears the entire navigation history
-                      );
-                    },
-                  ),
+                      icon: const Icon(Icons.logout, color: Colors.redAccent),
+                      tooltip: 'Logout',
+                      onPressed: () => showLogoutConfirmationDialog(context),
+                    ),
                     const SizedBox(height: 20),
                   ],
                 ),

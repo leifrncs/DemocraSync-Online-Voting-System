@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
+import '../widgets/logout_dialog.dart';
 import 'dashboard.dart';
 import 'ballot.dart';     
 import 'profile.dart';    
 import 'guidelines.dart'; 
-import 'login.dart'; 
 
 class StudentMainScreen extends StatefulWidget {
   final String studentName;
@@ -212,19 +211,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                   IconButton(
                     icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
                     tooltip: 'Logout',
-                    onPressed: () async {
-                      // 1. Clear the persistent session
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear(); 
-
-                      // 2. Navigate away safely
-                      if (!mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context, 
-                        MaterialPageRoute(builder: (context) => const LoginScreen()), 
-                        (route) => false, // Clears the entire navigation history
-                      );
-                    },
+                    onPressed: () => showLogoutConfirmationDialog(context),
                   ),
                 ],
               ),
