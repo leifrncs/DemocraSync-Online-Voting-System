@@ -315,20 +315,42 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Column(
                   children: [
                     const SizedBox(height: 20),
-                    _buildNavItem(Icons.dashboard_rounded, 0),
+                    _buildNavItem(Icons.dashboard_rounded, 'Dashboard', 0),
                     const SizedBox(height: 20),
-                    _buildNavItem(Icons.settings_suggest_rounded, 1), 
+                    _buildNavItem(Icons.settings_suggest_rounded, 'Election Configuration', 1), 
                     const SizedBox(height: 20),
-                    _buildNavItem(Icons.how_to_vote_rounded, 2),     
+                    _buildNavItem(Icons.how_to_vote_rounded, 'Candidate Management', 2),     
                     const SizedBox(height: 20),
-                    _buildNavItem(Icons.people_rounded, 3),          
+                    _buildNavItem(Icons.people_rounded, 'Voter Management', 3),          
                     const SizedBox(height: 20),
-                    _buildNavItem(Icons.assignment_rounded, 4),
+                    _buildNavItem(Icons.assignment_rounded, 'Audit Logs', 4),
                     const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.redAccent),
-                      tooltip: 'Logout',
-                      onPressed: () => showLogoutConfirmationDialog(context),
+                    Tooltip(
+                      message: 'Log Out',
+                      waitDuration: const Duration(milliseconds: 150),
+                      margin: const EdgeInsets.only(left: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: nemsuSlate,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
+                      ),
+                      textStyle: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.3,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.logout, color: Colors.redAccent),
+                        onPressed: () => showLogoutConfirmationDialog(context),
+                      ),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -353,16 +375,44 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
-  Widget _buildNavItem(IconData icon, int index) {
+  Widget _buildNavItem(IconData icon, String title, int index) {
     bool isActive = _selectedIndex == index;
-    return InkWell(
-      onTap: () => setState(() => _selectedIndex = index),
-      borderRadius: BorderRadius.circular(12),
+    return Tooltip(
+      message: title,
+      waitDuration: const Duration(milliseconds: 150),
+      margin: const EdgeInsets.only(left: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: nemsuSlate,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(2, 2),
+          ),
+        ],
+      ),
+      textStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.3,
+      ),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: isActive ? nemsuGold : Colors.transparent, borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: isActive ? nemsuBlue : Colors.white70, size: 24),
+        decoration: BoxDecoration(
+          color: isActive ? nemsuGold : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: IconButton(
+          icon: Icon(
+            icon,
+            color: isActive ? nemsuBlue : Colors.white70,
+            size: 24,
+          ),
+          onPressed: () => setState(() => _selectedIndex = index),
+        ),
       ),
     );
   }
