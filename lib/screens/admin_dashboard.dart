@@ -264,7 +264,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   Switch(
                     value: isActive,
-                    activeColor: nemsuGold,
+                    activeThumbColor: nemsuGold,
                     activeTrackColor: Colors.green,
                     inactiveTrackColor: Colors.grey.shade600,
                     onChanged: (value) async {
