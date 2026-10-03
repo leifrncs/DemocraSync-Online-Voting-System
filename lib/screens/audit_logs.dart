@@ -113,7 +113,10 @@ class _AuditLogsState extends State<AuditLogs> with SingleTickerProviderStateMix
                 }
 
                 var allDocs = snapshot.data?.docs ?? [];
-                var activityLogs = allDocs.where((d) => (d.data() as Map)['logCategory'] == 'ACTIVITY LOG').toList();
+                var activityLogs = allDocs.where((d) {
+                  var cat = (d.data() as Map)['logCategory'];
+                  return cat == 'ACTIVITY LOG' || cat == 'AI_OCR_AUDIT';
+                }).toList();
                 var securityAlerts = allDocs.where((d) => (d.data() as Map)['logCategory'] == 'SECURITY ALERT').toList();
                 
                 int criticalCount = securityAlerts.where((d) => (d.data() as Map)['severity'] == 'Critical').length;

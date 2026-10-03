@@ -4,8 +4,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart'; 
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;     
-import 'dart:io' if (dart.library.html) 'dart:html' as io; 
 import '../constants.dart';
+import '../services/ai_ocr_service.dart';
+import '../widgets/ai_scan_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String studentId; 
@@ -79,39 +80,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'png', 'jpeg'],
-      withData: true, // CRITICAL FOR WEB UPLOADS
+      withData: true,
     );
 
     if (result != null) {
       setState(() => _isLoading = true);
       try {
-        String base64Image = '';
         var pickedFile = result.files.first;
 
-        // Use bytes to ensure cross-platform compatibility
-        if (pickedFile.bytes != null) {
-          base64Image = base64Encode(pickedFile.bytes!);
-        } else {
+        if (pickedFile.bytes == null) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to read file data. Please try again.'), backgroundColor: Colors.redAccent));
           setState(() => _isLoading = false);
           return;
         }
 
+        final imageBytes = pickedFile.bytes!;
+        String base64Image = base64Encode(imageBytes);
+
         if (base64Image.length > 900000) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File is too large! Please select a smaller image.'), backgroundColor: Colors.redAccent));
+          setState(() => _isLoading = false);
           return;
         }
 
-        // Update Firestore and reset status so Admin can review it again
+        // Fetch current student profile for verification matching
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance.collection('voters').doc(widget.studentId).get();
+        Map<String, dynamic> userData = (userDoc.data() as Map<String, dynamic>?) ?? {};
+        String fullName = userData['name'] ?? '';
+        String department = userData['department'] ?? '';
+        String course = userData['course'] ?? '';
+
+        // 3. Launch interactive AI Vision OCR Scanning Dialog
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const AiScanningDialog(
+            statusText: 'Analyzing updated Certificate of Registration (COR) with Gemini Vision AI...',
+          ),
+        );
+
+        // 4. Perform AI OCR Analysis
+        final ocrResult = await AiOcrService().analyzeCOR(
+          imageBytes: imageBytes,
+          studentId: widget.studentId,
+          fullName: fullName,
+          department: department,
+          course: course,
+        );
+
+        // Close scanning dialog
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        String assignedStatus = ocrResult.verdict;
+
+        // 5. Update Firestore with new COR, Status, and AI Analysis
         await FirebaseFirestore.instance.collection('voters').doc(widget.studentId).update({
           'corBase64': base64Image,
-          'status': 'Pending Verification', 
+          'status': assignedStatus,
+          'aiAnalysis': ocrResult.toMap(),
+        });
+
+        // 6. Log re-upload event in Audit Logs
+        await FirebaseFirestore.instance.collection('audit_logs').add({
+          'timestamp': FieldValue.serverTimestamp(),
+          'logCategory': 'AI_OCR_AUDIT',
+          'action': 'COR Re-upload AI Verification',
+          'user': widget.studentId,
+          'type': 'COR Re-upload',
+          'details': {
+            'Verdict': assignedStatus,
+            'Confidence': '${(ocrResult.confidence * 100).toInt()}%',
+            'ID Matched': ocrResult.idMatched,
+            'Name Matched': ocrResult.nameMatched,
+            'Detected ID': ocrResult.detectedStudentId,
+            'Detected Name': ocrResult.detectedFullName,
+            'Reason': ocrResult.reason,
+          },
         });
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('COR Updated! Your account is back under review.'), backgroundColor: Colors.green));
+
+        // 7. Present interactive AI Result Dialog
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AiScanResultDialog(
+            result: ocrResult,
+            inputStudentId: widget.studentId,
+            inputFullName: fullName,
+            onContinue: () {
+              // Dialog dismissed
+            },
+          ),
+        );
+
       } catch (e) {
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating COR: $e'), backgroundColor: Colors.redAccent));
       } finally {

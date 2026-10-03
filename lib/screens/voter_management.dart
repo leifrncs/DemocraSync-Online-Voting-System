@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'dart:convert'; // 👉 NEW: Required to decode the Base64 COR image
 import '../constants.dart';
+import '../services/ai_ocr_service.dart';
 
 class VoterManagement extends StatefulWidget {
   const VoterManagement({super.key});
@@ -67,16 +68,79 @@ class _VoterManagementState extends State<VoterManagement> {
     );
   }
 
+  Future<void> _reScanWithAI(Map<String, dynamic> voter) async {
+    String base64 = voter['corBase64'] ?? '';
+    if (base64.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No COR image to scan.')));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Row(
+        children: [
+          SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+          SizedBox(width: 12),
+          Text('Running Gemini AI OCR analysis...'),
+        ],
+      ),
+      duration: Duration(seconds: 4),
+    ));
+
+    try {
+      final imageBytes = base64Decode(base64.replaceAll(RegExp(r'\s+'), ''));
+      final result = await AiOcrService().analyzeCOR(
+        imageBytes: imageBytes,
+        studentId: voter['id'],
+        fullName: voter['name'],
+        department: voter['dept'],
+        course: voter['course'],
+      );
+
+      await FirebaseFirestore.instance.collection('voters').doc(voter['id']).update({
+        'status': result.verdict,
+        'aiAnalysis': result.toMap(),
+      });
+
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'logCategory': 'AI_OCR_AUDIT',
+        'action': 'Admin Triggered AI OCR Re-Scan',
+        'user': 'Admin_Primary',
+        'type': 'Admin Re-Scan',
+        'details': {
+          'Target': 'voters/${voter['id']}',
+          'Verdict': result.verdict,
+          'Confidence': '${(result.confidence * 100).toInt()}%',
+          'ID Matched': result.idMatched,
+          'Name Matched': result.nameMatched,
+          'Reason': result.reason,
+        },
+      });
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close details dialog
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('AI Re-Scan complete! Verdict: ${result.verdict} (${result.reason})'),
+        backgroundColor: result.verdict == 'Verified' ? Colors.green : Colors.orange,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error during AI Re-Scan: $e'), backgroundColor: Colors.redAccent));
+    }
+  }
+
   void _showVoterDetails(Map<String, dynamic> voter) {
+    Map<String, dynamic>? aiAnalysis = voter['aiAnalysis'] as Map<String, dynamic>?;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
+        title: const Row(
           children: [
-            const Icon(Icons.badge_rounded, color: nemsuBlue),
-            const SizedBox(width: 10),
-            const Text('Voter Verification', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue)),
+            Icon(Icons.badge_rounded, color: nemsuBlue),
+            SizedBox(width: 10),
+            Text('Voter Verification', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue)),
           ],
         ),
         content: SingleChildScrollView(
@@ -104,7 +168,7 @@ class _VoterManagementState extends State<VoterManagement> {
               ),
               const SizedBox(height: 16),
               
-              // 👉 NEW: COR Review Section inside the dialog
+              // 👉 COR Review & Re-scan Section
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -112,27 +176,79 @@ class _VoterManagementState extends State<VoterManagement> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300)
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Certificate of Registration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text('Proof of enrollment', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                        ],
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Certificate of Registration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text('Proof of enrollment image', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: nemsuBlue, padding: const EdgeInsets.symmetric(horizontal: 10)),
+                          onPressed: () => _viewCOR(voter['corBase64']), 
+                          icon: const Icon(Icons.image_search, color: Colors.white, size: 15),
+                          label: const Text('View', style: TextStyle(color: Colors.white, fontSize: 11)),
+                        ),
+                        const SizedBox(width: 6),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(backgroundColor: nemsuGold, foregroundColor: nemsuBlue, padding: const EdgeInsets.symmetric(horizontal: 10)),
+                          onPressed: () => _reScanWithAI(voter),
+                          icon: const Icon(Icons.auto_awesome, size: 14),
+                          label: const Text('AI Re-Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        )
+                      ],
                     ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: nemsuBlue, padding: const EdgeInsets.symmetric(horizontal: 12)),
-                      onPressed: () => _viewCOR(voter['corBase64']), 
-                      icon: const Icon(Icons.image_search, color: Colors.white, size: 16),
-                      label: const Text('Review', style: TextStyle(color: Colors.white, fontSize: 12)),
-                    )
                   ],
                 ),
               ),
+
+              // 👉 AI OCR Analysis Card
+              if (aiAnalysis != null) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: nemsuBackground,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade100),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.auto_awesome, color: nemsuBlue, size: 15),
+                              SizedBox(width: 6),
+                              Text('AI OCR Audit Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: nemsuBlue)),
+                            ],
+                          ),
+                          Text(
+                            'Confidence: ${((aiAnalysis['confidence'] as num? ?? 0.8) * 100).toInt()}%',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: nemsuBlue),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text('• Detected ID: ${aiAnalysis['detectedStudentId'] ?? 'N/A'} (Match: ${aiAnalysis['idMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
+                      Text('• Detected Name: ${aiAnalysis['detectedFullName'] ?? 'N/A'} (Match: ${aiAnalysis['nameMatched'] == true ? 'YES' : 'NO'})', style: const TextStyle(fontSize: 11)),
+                      if (aiAnalysis['academicYear'] != null && aiAnalysis['academicYear'] != 'N/A')
+                        Text('• Academic Period: ${aiAnalysis['semester'] ?? ''} ${aiAnalysis['academicYear'] ?? ''}', style: const TextStyle(fontSize: 11)),
+                      const SizedBox(height: 4),
+                      Text('• AI Notes: ${aiAnalysis['reason'] ?? 'None'}', style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontStyle: FontStyle.italic)),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 16),
               _buildStatusIndicator(voter['status']),
@@ -143,14 +259,12 @@ class _VoterManagementState extends State<VoterManagement> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close', style: TextStyle(color: Colors.grey))),
           
           if (voter['status'] == 'Pending' || voter['status'] == 'Rejected') ...[
-            // 👉 NEW: Reject Button
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
               onPressed: () async {
                 try {
                   await FirebaseFirestore.instance.collection('voters').doc(voter['id']).update({'status': 'Rejected'});
 
-                  // 👉 NEW: WRITE TO AUDIT LOGS
                   await FirebaseFirestore.instance.collection('audit_logs').add({
                     'timestamp': FieldValue.serverTimestamp(),
                     'logCategory': 'ACTIVITY LOG',
@@ -173,14 +287,12 @@ class _VoterManagementState extends State<VoterManagement> {
               child: const Text('Reject', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
 
-            // 👉 Verify Button
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
               onPressed: () async {
                 try {
                   await FirebaseFirestore.instance.collection('voters').doc(voter['id']).update({'status': 'Verified'});
                   
-                  // 👉 NEW: WRITE TO AUDIT LOGS
                   await FirebaseFirestore.instance.collection('audit_logs').add({
                     'timestamp': FieldValue.serverTimestamp(),
                     'logCategory': 'ACTIVITY LOG',
@@ -322,6 +434,7 @@ class _VoterManagementState extends State<VoterManagement> {
                     'status': dbStatus, 
                     'enrollmentStatus': dbStatus == 'Verified' ? 'Enrolled' : 'Under Review',
                     'corBase64': data['corBase64'] ?? '', 
+                    'aiAnalysis': data['aiAnalysis'],
                   };
                 }).toList();
 

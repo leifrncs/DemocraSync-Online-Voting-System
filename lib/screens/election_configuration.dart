@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
+import '../services/ai_ocr_service.dart';
 
 class ElectionConfiguration extends StatefulWidget {
   const ElectionConfiguration({super.key});
@@ -19,6 +20,13 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
   List<Map<String, dynamic>> positionRules = [];
   bool isLoading = true;
 
+  final TextEditingController _apiKeyController = TextEditingController();
+  bool _isApiKeyVisible = false;
+  bool _isTestingKey = false;
+  ApiTestResult? _lastTestResult;
+  String _activeModelName = geminiModelName;
+  List<String> _availableVisionModels = List.from(presetVisionModels);
+
   final List<String> scopes = [
     'University-Wide (USG)',
     'College of Information Technology Education',
@@ -34,9 +42,24 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
     _loadConfiguration();
   }
 
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
+
   // --- FIREBASE: LOAD CONFIGURATION ---
   Future<void> _loadConfiguration() async {
     try {
+      // Load saved Gemini API Key & Model
+      String activeKey = await AiOcrService().getActiveApiKey();
+      String activeModel = await AiOcrService().getActiveModelName();
+      _apiKeyController.text = activeKey;
+      _activeModelName = activeModel;
+      if (!_availableVisionModels.contains(activeModel)) {
+        _availableVisionModels.insert(0, activeModel);
+      }
+
       DocumentSnapshot doc = await FirebaseFirestore.instance.collection('config').doc('election_settings').get();
       
       if (doc.exists && (doc.data() as Map<String, dynamic>).containsKey('positions')) {
@@ -45,7 +68,6 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
         setState(() {
           positionRules = List<Map<String, dynamic>>.from(data['positions']);
           
-          // 👉 NEW: Load the saved schedule from Firebase if it exists
           if (data.containsKey('schedule')) {
             var sched = data['schedule'];
             if (sched['start'] != null) {
@@ -63,20 +85,16 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
           isLoading = false;
         });
       } else {
-        // --- DYNAMIC GENERATOR FOR ALL COLLEGES ---
         List<Map<String, dynamic>> generatedPositions = [
-          // USG Executive
           {'position': 'President', 'scope': 'University-Wide (USG)', 'maxElected': 1},
           {'position': 'Vice President for Internal Affairs', 'scope': 'University-Wide (USG)', 'maxElected': 1},
           {'position': 'Vice President for External Affairs', 'scope': 'University-Wide (USG)', 'maxElected': 1},
           {'position': 'Executive Secretary', 'scope': 'University-Wide (USG)', 'maxElected': 1},
           {'position': 'Treasurer', 'scope': 'University-Wide (USG)', 'maxElected': 1},
           {'position': 'Auditor', 'scope': 'University-Wide (USG)', 'maxElected': 1},
-          // USG Legislative
           {'position': 'Senator', 'scope': 'University-Wide (USG)', 'maxElected': 12},
         ];
 
-        // Automatically loop through all colleges and attach the CLSG positions
         for (String scope in scopes) {
           if (scope != 'University-Wide (USG)') {
             generatedPositions.addAll([
@@ -106,7 +124,6 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
   // --- FIREBASE: SAVE CONFIGURATION ---
   Future<void> _saveConfiguration() async {
     try {
-      // 👉 NEW: Format dates to ISO strings so Firebase can store them easily
       DateTime? combinedStart;
       if (startDate != null && startTime != null) {
         combinedStart = DateTime(startDate!.year, startDate!.month, startDate!.day, startTime!.hour, startTime!.minute);
@@ -119,7 +136,6 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
 
       await FirebaseFirestore.instance.collection('config').doc('election_settings').set({
         'positions': positionRules,
-        // 👉 NEW: Save the schedule payload
         'schedule': {
           'start': combinedStart?.toIso8601String(),
           'end': combinedEnd?.toIso8601String(),
@@ -127,13 +143,78 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
+      // Save the Gemini API Key & Detected Model
+      await AiOcrService().saveApiKey(_apiKeyController.text.trim(), modelName: _activeModelName);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('COMSELEC Election Settings saved to database!'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('COMSELEC Election Settings & AI OCR Key saved to database!'), backgroundColor: Colors.green),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving settings: $e'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  Future<void> _testApiKey() async {
+    String key = _apiKeyController.text.trim();
+    if (key.isEmpty) {
+      setState(() {
+        _lastTestResult = ApiTestResult.failure(
+          message: 'Please enter an API key to test.',
+          tip: 'Obtain a free Gemini API Key from https://aistudio.google.com/',
+        );
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an API key to test.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    setState(() {
+      _isTestingKey = true;
+      _lastTestResult = null;
+    });
+
+    ApiTestResult result = await AiOcrService().testApiKey(key, preferredModel: _activeModelName);
+
+    if (!mounted) return;
+    setState(() {
+      _isTestingKey = false;
+      _lastTestResult = result;
+      if (result.availableModels != null && result.availableModels!.isNotEmpty) {
+        for (var m in result.availableModels!) {
+          if (!_availableVisionModels.contains(m)) {
+            _availableVisionModels.add(m);
+          }
+        }
+      }
+      if (result.isValid && result.detectedModelName != null) {
+        _activeModelName = result.detectedModelName!;
+        if (!_availableVisionModels.contains(_activeModelName)) {
+          _availableVisionModels.insert(0, _activeModelName);
+        }
+      }
+    });
+
+    if (result.isValid) {
+      // Automatically persist verified key and model to Firestore
+      AiOcrService().saveApiKey(key, modelName: _activeModelName).ignore();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${result.message} (Auto-saved to Firestore)'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('API Key test failed: ${result.message}'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -417,6 +498,230 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> {
                   },
                 ),
             
+            const SizedBox(height: 32),
+
+            // --- SECTION: AI OCR & VERIFICATION ENGINE ---
+            _buildSectionHeader('AI OCR & Vision Verification Engine', Icons.auto_awesome_rounded),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Google Gemini Vision API Key',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: nemsuBlue),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Powering automated Certificate of Registration (COR) text recognition and student enrollment cross-validation across Web, Desktop, and Mobile.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey, height: 1.4),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _apiKeyController,
+                      obscureText: !_isApiKeyVisible,
+                      onChanged: (_) {
+                        if (_lastTestResult != null) {
+                          setState(() => _lastTestResult = null);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Google Gemini API Key',
+                        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        hintText: 'Enter your Google Gemini API Key (AIzaSy...)',
+                        hintStyle: const TextStyle(fontSize: 13),
+                        filled: true,
+                        fillColor: nemsuBackground,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(_isApiKeyVisible ? Icons.visibility : Icons.visibility_off, size: 20, color: Colors.grey),
+                              onPressed: () => setState(() => _isApiKeyVisible = !_isApiKeyVisible),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _availableVisionModels.contains(_activeModelName)
+                          ? _activeModelName
+                          : _availableVisionModels.first,
+                      decoration: InputDecoration(
+                        labelText: 'Selected Multimodal Vision Model',
+                        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        helperText: 'Select a stable high-throughput model (e.g. gemini-2.5-flash or gemini-1.5-flash-8b).',
+                        helperStyle: const TextStyle(fontSize: 11, color: Colors.grey),
+                        filled: true,
+                        fillColor: nemsuBackground,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300)),
+                        enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300)),
+                        prefixIcon: const Icon(Icons.auto_awesome_rounded, size: 18, color: nemsuBlue),
+                      ),
+                      items: _availableVisionModels.map((model) {
+                        String label = model;
+                        if (model == 'gemini-flash-lite-latest') {
+                          label = 'gemini-flash-lite-latest (Fast & Lightweight - High Availability)';
+                        } else if (model == 'gemini-2.5-flash') {
+                          label = 'gemini-2.5-flash (Balanced - Stable & Fast)';
+                        } else if (model == 'gemini-1.5-flash-8b') {
+                          label = 'gemini-1.5-flash-8b (Ultra High-Throughput & Low Load)';
+                        } else if (model == 'gemini-2.0-flash-lite') {
+                          label = 'gemini-2.0-flash-lite (Lightweight Vision)';
+                        } else if (model == 'gemini-3.8-flash') {
+                          label = 'gemini-3.8-flash (Latest Flagship)';
+                        } else if (model == 'gemini-1.5-flash') {
+                          label = 'gemini-1.5-flash (Standard Vision)';
+                        }
+                        return DropdownMenuItem<String>(
+                          value: model,
+                          child: Text(
+                            label,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (newModel) {
+                        if (newModel != null) {
+                          setState(() {
+                            _activeModelName = newModel;
+                            if (_lastTestResult != null) _lastTestResult = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: nemsuBlue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: _isTestingKey ? null : _testApiKey,
+                          icon: _isTestingKey 
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.network_check_rounded, size: 16),
+                          label: const Text('Test Connection', style: TextStyle(fontSize: 12)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Active: $_activeModelName (Auto-Adaptive Fallback)',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_lastTestResult != null) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _lastTestResult!.isValid
+                              ? Colors.green.shade50
+                              : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: _lastTestResult!.isValid
+                                ? Colors.green.shade300
+                                : Colors.red.shade300,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  _lastTestResult!.isValid
+                                      ? Icons.check_circle_rounded
+                                      : Icons.error_outline_rounded,
+                                  size: 18,
+                                  color: _lastTestResult!.isValid
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _lastTestResult!.isValid
+                                        ? 'Connection Verified'
+                                        : (_lastTestResult!.statusCode != null
+                                            ? 'Connection Failed (HTTP ${_lastTestResult!.statusCode})'
+                                            : 'Connection Failed'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: _lastTestResult!.isValid
+                                          ? Colors.green.shade900
+                                          : Colors.red.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _lastTestResult!.message,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _lastTestResult!.isValid
+                                    ? Colors.green.shade800
+                                    : Colors.red.shade800,
+                              ),
+                            ),
+                            if (_lastTestResult!.troubleshootingTip != null) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    size: 14,
+                                    color: _lastTestResult!.isValid
+                                        ? Colors.green.shade700
+                                        : Colors.amber.shade900,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Tip: ${_lastTestResult!.troubleshootingTip}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: _lastTestResult!.isValid
+                                            ? Colors.green.shade800
+                                            : Colors.brown.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 40),
 
             // --- SAVE SETTINGS BUTTON ---

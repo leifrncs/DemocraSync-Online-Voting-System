@@ -6,6 +6,8 @@ import 'package:bcrypt/bcrypt.dart';
 import 'dart:convert'; 
 import 'package:flutter/foundation.dart' show kIsWeb;      
 import '../constants.dart';
+import '../services/ai_ocr_service.dart';
+import '../widgets/ai_scan_dialog.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -252,8 +254,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleRegistration() async {
     final email = _emailController.text.trim();
     final studentId = _studentIdController.text.trim();
+    final fullName = _fullNameController.text.trim();
 
-    if (studentId.isEmpty || _fullNameController.text.isEmpty) {
+    if (studentId.isEmpty || fullName.isEmpty) {
       _showError('Please fill in all text fields.');
       return;
     }
@@ -288,14 +291,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      String base64Image = '';
-      if (_pickedFile!.bytes != null) {
-        base64Image = base64Encode(_pickedFile!.bytes!);
-      } else {
+      if (_pickedFile!.bytes == null) {
         _showError('Failed to read file data. Please try re-selecting the image.');
         setState(() => _isLoading = false);
         return;
       }
+
+      final imageBytes = _pickedFile!.bytes!;
+      String base64Image = base64Encode(imageBytes);
 
       if (base64Image.length > 900000) {
         _showError('File is too large! Please select a smaller or compressed image.');
@@ -303,10 +306,36 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return;
       }
 
-      String hashedPassword = BCrypt.hashpw(_passwordController.text, BCrypt.gensalt());
+      // 1. Launch interactive AI Vision OCR Scanning Dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AiScanningDialog(
+          statusText: 'Analyzing Certificate of Registration (COR) and verifying enrollment with Gemini Vision AI...',
+        ),
+      );
 
+      // 2. Perform AI OCR Analysis
+      final ocrResult = await AiOcrService().analyzeCOR(
+        imageBytes: imageBytes,
+        studentId: studentId,
+        fullName: fullName,
+        department: _selectedDept!,
+        course: _selectedCourse!,
+      );
+
+      // Close scanning dialog
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      String hashedPassword = BCrypt.hashpw(_passwordController.text, BCrypt.gensalt());
+      String assignedStatus = ocrResult.verdict; // 'Verified', 'Pending Verification', or 'Rejected'
+
+      // 3. Save Student Record with AI Analysis in Firestore
       await FirebaseFirestore.instance.collection('voters').doc(studentId).set({
-        'name': _fullNameController.text.trim(),
+        'name': fullName,
         'age': _ageController.text.trim(),
         'birthDate': _birthDateController.text,
         'gender': _selectedGender,
@@ -316,17 +345,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
         'email': email,
         'password': hashedPassword, 
         'corBase64': base64Image,
-        'status': 'Pending Verification', 
+        'status': assignedStatus,
+        'aiAnalysis': ocrResult.toMap(),
         'timestamp': FieldValue.serverTimestamp(),
       });
 
+      // 4. Log AI OCR Event in Audit Logs
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'logCategory': 'AI_OCR_AUDIT',
+        'action': 'AI OCR Verification Processed',
+        'user': studentId,
+        'type': 'Student Registration',
+        'details': {
+          'Verdict': assignedStatus,
+          'Confidence': '${(ocrResult.confidence * 100).toInt()}%',
+          'ID Matched': ocrResult.idMatched,
+          'Name Matched': ocrResult.nameMatched,
+          'Detected ID': ocrResult.detectedStudentId,
+          'Detected Name': ocrResult.detectedFullName,
+          'Reason': ocrResult.reason,
+        },
+      });
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration submitted! Awaiting AI verification.'), backgroundColor: Colors.green),
+
+      // 5. Present interactive AI Result Dialog
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AiScanResultDialog(
+          result: ocrResult,
+          inputStudentId: studentId,
+          inputFullName: fullName,
+          onContinue: () {
+            Navigator.pop(context); // Return to Login screen
+          },
+        ),
       );
-      Navigator.pop(context);
 
     } catch (e) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context); // Close scanning dialog if open
+      }
       _showError('Error during registration: $e');
     } finally {
       if (mounted) {
