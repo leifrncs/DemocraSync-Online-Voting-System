@@ -56,23 +56,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
       int totalVotes = votersSnap.docs.where((doc) => (doc.data())['hasVoted'] == true).length;
       double turnout = totalVoters > 0 ? (totalVotes / totalVoters) * 100 : 0;
 
-      Map<String, List<Map<String, dynamic>>> groupedCandidates = {};
+      // Group candidates by Department / Scope, then by Position
+      Map<String, Map<String, List<Map<String, dynamic>>>> groupedByScope = {};
       for (var doc in candidatesSnap.docs) {
         var data = doc.data();
+        String dept = data['department'] ?? 'University-Wide (USG)';
         String position = data['position'] ?? 'Unknown Position';
-        groupedCandidates.putIfAbsent(position, () => []).add(data);
+        groupedByScope.putIfAbsent(dept, () => {}).putIfAbsent(position, () => []).add(data);
       }
       
-      groupedCandidates.forEach((key, list) {
-        list.sort((a, b) {
-          int voteA = (a['voteCount'] as num?)?.toInt() ?? 0;
-          int voteB = (b['voteCount'] as num?)?.toInt() ?? 0;
-          if (voteB != voteA) {
-            return voteB.compareTo(voteA); // Highest to lowest votes
-          }
-          return (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? '');
+      groupedByScope.forEach((dept, posMap) {
+        posMap.forEach((pos, list) {
+          list.sort((a, b) {
+            int voteA = (a['voteCount'] as num?)?.toInt() ?? 0;
+            int voteB = (b['voteCount'] as num?)?.toInt() ?? 0;
+            if (voteB != voteA) {
+              return voteB.compareTo(voteA); // Highest to lowest votes
+            }
+            return (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? '');
+          });
         });
       });
+
+      const canonicalScopes = [
+        'University-Wide (USG)',
+        'College of Information Technology Education',
+        'College of Business and Management',
+        'College of Teacher Education',
+        'College of Engineering and Technology',
+        'College of Arts and Sciences',
+      ];
+
+      List<String> sortedScopes = groupedByScope.keys.toList()
+        ..sort((a, b) {
+          int indexA = canonicalScopes.indexOf(a);
+          int indexB = canonicalScopes.indexOf(b);
+          if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+          if (indexA != -1) return -1;
+          if (indexB != -1) return 1;
+          return a.compareTo(b);
+        });
 
       const positionHierarchy = [
         'President',
@@ -80,26 +103,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'Vice President for External Affairs',
         'Vice President',
         'Executive Secretary',
-        'Secretary',
         'Treasurer',
         'Auditor',
         'Public Relations Officer',
         'Senator',
         'Governor',
         'Vice Governor',
-        'Secretary Treasurer',
+        'Secretary',
+        'Treasurer',
+        'College Auditor',
+        'Public Information Officer',
+        'Business Manager',
+        'Sargeant at Arms',
+        'Program/Year Level Rep',
         'Representative',
       ];
-
-      List<MapEntry<String, List<Map<String, dynamic>>>> sortedPositionEntries = groupedCandidates.entries.toList()
-        ..sort((a, b) {
-          int indexA = positionHierarchy.indexOf(a.key);
-          int indexB = positionHierarchy.indexOf(b.key);
-          if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
-          if (indexA != -1) return -1;
-          if (indexB != -1) return 1;
-          return a.key.compareTo(b.key);
-        });
 
       final pdf = pw.Document();
       final String printedDateTime = DateFormat('MMMM dd, yyyy hh:mm:ss a').format(DateTime.now());
@@ -209,45 +227,73 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               pw.SizedBox(height: 20),
 
-              ...sortedPositionEntries.map((entry) {
-                String position = entry.key;
-                List<Map<String, dynamic>> candidates = entry.value;
+              ...sortedScopes.expand((scopeName) {
+                var posMap = groupedByScope[scopeName]!;
+                var sortedPositions = posMap.entries.toList()
+                  ..sort((a, b) {
+                    int indexA = positionHierarchy.indexOf(a.key);
+                    int indexB = positionHierarchy.indexOf(b.key);
+                    if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+                    if (indexA != -1) return -1;
+                    if (indexB != -1) return 1;
+                    return a.key.compareTo(b.key);
+                  });
 
-                return pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      position.toUpperCase(),
-                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                return [
+                  pw.Container(
+                    width: double.infinity,
+                    padding: const pw.EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                    margin: const pw.EdgeInsets.only(top: 8, bottom: 8),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.blue900,
+                      borderRadius: pw.BorderRadius.circular(4),
                     ),
-                    pw.SizedBox(height: 6),
-                    pw.TableHelper.fromTextArray(
-                      headers: ['Candidate Name', 'Party Affiliation', 'Total Votes'],
-                      data: candidates.map((c) => [
-                        c['name']?.toString() ?? 'Unknown',
-                        c['party']?.toString() ?? 'Independent',
-                        (c['voteCount'] ?? 0).toString(),
-                      ]).toList(),
-                      columnWidths: {
-                        0: const pw.FlexColumnWidth(4.5),
-                        1: const pw.FlexColumnWidth(3.5),
-                        2: const pw.FlexColumnWidth(2.0),
-                      },
-                      headerStyle: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-                      headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
-                      headerHeight: 24,
-                      cellStyle: const pw.TextStyle(fontSize: 10),
-                      cellHeight: 22,
-                      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                      cellAlignments: {
-                        0: pw.Alignment.centerLeft,
-                        1: pw.Alignment.centerLeft,
-                        2: pw.Alignment.center,
-                      },
+                    child: pw.Text(
+                      scopeName.toUpperCase(),
+                      style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
                     ),
-                    pw.SizedBox(height: 16),
-                  ],
-                );
+                  ),
+                  ...sortedPositions.map((entry) {
+                    String position = entry.key;
+                    List<Map<String, dynamic>> candidates = entry.value;
+
+                    return pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          position.toUpperCase(),
+                          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                        ),
+                        pw.SizedBox(height: 5),
+                        pw.TableHelper.fromTextArray(
+                          headers: ['Candidate Name', 'Party Affiliation', 'Total Votes'],
+                          data: candidates.map((c) => [
+                            c['name']?.toString() ?? 'Unknown',
+                            c['party']?.toString() ?? 'Independent',
+                            (c['voteCount'] ?? 0).toString(),
+                          ]).toList(),
+                          columnWidths: {
+                            0: const pw.FlexColumnWidth(4.5),
+                            1: const pw.FlexColumnWidth(3.5),
+                            2: const pw.FlexColumnWidth(2.0),
+                          },
+                          headerStyle: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
+                          headerHeight: 22,
+                          cellStyle: const pw.TextStyle(fontSize: 9.5),
+                          cellHeight: 20,
+                          cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          cellAlignments: {
+                            0: pw.Alignment.centerLeft,
+                            1: pw.Alignment.centerLeft,
+                            2: pw.Alignment.center,
+                          },
+                        ),
+                        pw.SizedBox(height: 12),
+                      ],
+                    );
+                  }),
+                ];
               }),
 
               pw.SizedBox(height: 25),
@@ -826,7 +872,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             ),
                           )
                         else
-                          for (var entry in scopedCandidates.entries)
+                          for (var entry in (scopedCandidates.entries.toList()
+                            ..sort((a, b) {
+                              const dashHierarchy = [
+                                'President',
+                                'Vice President for Internal Affairs',
+                                'Vice President for External Affairs',
+                                'Vice President',
+                                'Executive Secretary',
+                                'Treasurer',
+                                'Auditor',
+                                'Senator',
+                                'Governor',
+                                'Vice Governor',
+                                'Secretary',
+                                'Treasurer',
+                                'College Auditor',
+                                'Public Information Officer',
+                                'Business Manager',
+                                'Sargeant at Arms',
+                                'Program/Year Level Rep',
+                                'Representative',
+                              ];
+                              int indexA = dashHierarchy.indexOf(a.key);
+                              int indexB = dashHierarchy.indexOf(b.key);
+                              if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+                              if (indexA != -1) return -1;
+                              if (indexB != -1) return 1;
+                              return a.key.compareTo(b.key);
+                            })))
                             Builder(
                               builder: (context) {
                                 int totalPosVotes = entry.value.fold(0, (sum, item) => sum + ((item['voteCount'] as num?)?.toInt() ?? 0));

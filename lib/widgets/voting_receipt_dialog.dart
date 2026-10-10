@@ -384,7 +384,11 @@ class VotingReceiptDialog extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ...positions.map((position) {
-          final candidateVoted = selections[position]?.toString();
+          final candidateVoted = (selections['$title::$position']
+              ?? selections['University-Wide (USG)::$position']
+              ?? selections['${studentDept.toUpperCase()}::$position']
+              ?? selections['${studentDept}::$position']
+              ?? selections[position])?.toString();
           final hasVotedForPos = candidateVoted != null && candidateVoted.trim().isNotEmpty;
 
           return Container(
@@ -465,13 +469,17 @@ class VotingReceiptDialog extends StatelessWidget {
       ...positionsByScope['College Student Government'] ?? {},
     };
 
-    List<String> extraPositions = selections.keys.where((p) => !allKnownPositions.contains(p)).toList();
+    List<String> extraPositions = selections.keys.where((p) {
+      String posName = p.contains('::') ? p.split('::').last : p;
+      return !allKnownPositions.contains(p) && !allKnownPositions.contains(posName);
+    }).toList();
     if (extraPositions.isEmpty) return [];
 
     return [
       const SizedBox(height: 12),
       ...extraPositions.map((position) {
         final candidateVoted = selections[position]?.toString() ?? 'Abstained';
+        final displayPos = position.contains('::') ? position.split('::').last : position;
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -485,7 +493,7 @@ class VotingReceiptDialog extends StatelessWidget {
               Expanded(
                 flex: 5,
                 child: Text(
-                  position,
+                  displayPos,
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: nemsuBlue),
                 ),
               ),

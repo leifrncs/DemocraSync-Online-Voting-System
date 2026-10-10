@@ -135,12 +135,18 @@ class _BallotScreenState extends State<BallotScreen> {
                     
                     // Summary of votes
                     ..._selectedCandidates.entries.map((entry) {
+                      String posKey = entry.key;
+                      String posName = posKey.contains('::') ? posKey.split('::').last : posKey;
+                      String scopePrefix = posKey.contains('::') && posKey.split('::').first.contains('USG')
+                          ? 'USG '
+                          : (posKey.contains('::') ? 'College ' : '');
+
                       return Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6.0),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: Text('${entry.key}:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nemsuBlue))),
+                            Expanded(child: Text('$scopePrefix$posName:', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: nemsuBlue))),
                             Expanded(child: Text(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
                           ],
                         ),
@@ -211,6 +217,37 @@ class _BallotScreenState extends State<BallotScreen> {
   Widget _buildScopeSection(String title, Map<String, List<Map<String, dynamic>>> positions) {
     if (positions.isEmpty) return const SizedBox.shrink();
 
+    const positionHierarchy = [
+      'President',
+      'Vice President for Internal Affairs',
+      'Vice President for External Affairs',
+      'Vice President',
+      'Executive Secretary',
+      'Treasurer',
+      'Auditor',
+      'Senator',
+      'Governor',
+      'Vice Governor',
+      'Secretary',
+      'Treasurer',
+      'College Auditor',
+      'Public Information Officer',
+      'Business Manager',
+      'Sargeant at Arms',
+      'Program/Year Level Rep',
+      'Representative',
+    ];
+
+    List<MapEntry<String, List<Map<String, dynamic>>>> sortedPositions = positions.entries.toList()
+      ..sort((a, b) {
+        int indexA = positionHierarchy.indexOf(a.key);
+        int indexB = positionHierarchy.indexOf(b.key);
+        if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+        if (indexA != -1) return -1;
+        if (indexB != -1) return 1;
+        return a.key.compareTo(b.key);
+      });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -222,7 +259,7 @@ class _BallotScreenState extends State<BallotScreen> {
         ),
         const SizedBox(height: 16),
 
-        ...positions.entries.map((entry) {
+        ...sortedPositions.map((entry) {
           String positionName = entry.key;
           List<Map<String, dynamic>> candidates = entry.value;
 
@@ -232,7 +269,7 @@ class _BallotScreenState extends State<BallotScreen> {
               Text(positionName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: nemsuBlue)),
               const Divider(color: nemsuGold, thickness: 2, height: 12),
               const SizedBox(height: 10),
-              ...candidates.map((c) => _buildCandidateTile(c, positionName)),
+              ...candidates.map((c) => _buildCandidateTile(c, positionName, title)),
               const SizedBox(height: 25),
             ],
           );
@@ -242,16 +279,17 @@ class _BallotScreenState extends State<BallotScreen> {
   }
 
   // 👉 THE FIX: Removed ListTile and AnimatedContainer for a pure, flicker-free Row
-  Widget _buildCandidateTile(Map<String, dynamic> candidate, String position) {
+  Widget _buildCandidateTile(Map<String, dynamic> candidate, String position, String scopeTitle) {
     String name = candidate['name'] ?? 'Unknown';
     String party = candidate['party'] ?? 'Independent';
-    bool isSelected = _selectedCandidates[position] == name;
+    String selectionKey = '$scopeTitle::$position';
+    bool isSelected = _selectedCandidates[selectionKey] == name;
 
     return GestureDetector(
       onTap: () {
         setState(() {
-          if (isSelected) _selectedCandidates.remove(position);
-          else _selectedCandidates[position] = name;
+          if (isSelected) _selectedCandidates.remove(selectionKey);
+          else _selectedCandidates[selectionKey] = name;
         });
       },
       child: Container(

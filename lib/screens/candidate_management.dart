@@ -65,9 +65,32 @@ class _CandidateManagementState extends State<CandidateManagement> {
         }
       }
 
+      // Automatically migrate any 'Secretary Treasurer' to separate 'Secretary' and 'Treasurer'
+      List<Map<String, dynamic>> expandedPositions = [];
+      for (var p in loadedPositions) {
+        if (p['position'] == 'Secretary Treasurer') {
+          expandedPositions.add({'scope': p['scope'], 'position': 'Secretary', 'seats': p['seats'] ?? p['maxElected'] ?? 1});
+          expandedPositions.add({'scope': p['scope'], 'position': 'Treasurer', 'seats': p['seats'] ?? p['maxElected'] ?? 1});
+        } else {
+          expandedPositions.add(p);
+        }
+      }
+      loadedPositions = expandedPositions;
+
       if (loadedPositions.isEmpty) {
         loadedPositions = _generateDefaultPositions();
       }
+
+      // Automatically migrate any existing candidates in Firestore from 'Secretary Treasurer' to 'Secretary'
+      FirebaseFirestore.instance
+          .collection('candidates')
+          .where('position', isEqualTo: 'Secretary Treasurer')
+          .get()
+          .then((snap) {
+        for (var d in snap.docs) {
+          d.reference.update({'position': 'Secretary'});
+        }
+      }).catchError((_) {});
 
       Set<String> depts = {..._canonicalScopes};
       for (var p in loadedPositions) {
@@ -119,7 +142,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
       defaults.addAll([
         {'scope': college, 'position': 'Governor', 'seats': 1},
         {'scope': college, 'position': 'Vice Governor', 'seats': 1},
-        {'scope': college, 'position': 'Secretary Treasurer', 'seats': 1},
+        {'scope': college, 'position': 'Secretary', 'seats': 1},
+        {'scope': college, 'position': 'Treasurer', 'seats': 1},
         {'scope': college, 'position': 'College Auditor', 'seats': 1},
         {'scope': college, 'position': 'Public Information Officer', 'seats': 2},
         {'scope': college, 'position': 'Business Manager', 'seats': 2},
@@ -155,7 +179,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
     return [
       'Governor',
       'Vice Governor',
-      'Secretary Treasurer',
+      'Secretary',
+      'Treasurer',
       'College Auditor',
       'Public Information Officer',
       'Business Manager',
@@ -206,7 +231,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
     List<String> availablePositions = _getPositionsForDepartment(formDept);
     String formPos = isEdit && availablePositions.contains(existingCandidate!['position'])
         ? existingCandidate['position']
-        : availablePositions.first;
+        : (isEdit && existingCandidate!['position'] == 'Secretary Treasurer' ? 'Secretary' : availablePositions.first);
 
     await showDialog(
       context: context,

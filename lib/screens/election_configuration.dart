@@ -111,7 +111,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
         generatedPositions.addAll([
           {'position': 'Governor', 'scope': scope, 'maxElected': 1},
           {'position': 'Vice Governor', 'scope': scope, 'maxElected': 1},
-          {'position': 'Secretary Treasurer', 'scope': scope, 'maxElected': 1},
+          {'position': 'Secretary', 'scope': scope, 'maxElected': 1},
+          {'position': 'Treasurer', 'scope': scope, 'maxElected': 1},
           {'position': 'College Auditor', 'scope': scope, 'maxElected': 1},
           {'position': 'Public Information Officer', 'scope': scope, 'maxElected': 2},
           {'position': 'Business Manager', 'scope': scope, 'maxElected': 2},
@@ -165,6 +166,18 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           if (data.containsKey('positions') && data['positions'] is List && (data['positions'] as List).isNotEmpty) {
             List<Map<String, dynamic>> loadedPositions = List<Map<String, dynamic>>.from(data['positions']);
 
+            // Automatically migrate any 'Secretary Treasurer' into separate 'Secretary' and 'Treasurer'
+            List<Map<String, dynamic>> migratedPositions = [];
+            for (var p in loadedPositions) {
+              if (p['position'] == 'Secretary Treasurer') {
+                migratedPositions.add({'position': 'Secretary', 'scope': p['scope'], 'maxElected': p['maxElected'] ?? 1});
+                migratedPositions.add({'position': 'Treasurer', 'scope': p['scope'], 'maxElected': p['maxElected'] ?? 1});
+              } else {
+                migratedPositions.add(p);
+              }
+            }
+            loadedPositions = migratedPositions;
+
             // Deduplicate loaded positions
             loadedPositions = _deduplicatePositions(loadedPositions);
 
@@ -186,7 +199,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                   loadedPositions.addAll([
                     {'position': 'Governor', 'scope': scope, 'maxElected': 1},
                     {'position': 'Vice Governor', 'scope': scope, 'maxElected': 1},
-                    {'position': 'Secretary Treasurer', 'scope': scope, 'maxElected': 1},
+                    {'position': 'Secretary', 'scope': scope, 'maxElected': 1},
+                    {'position': 'Treasurer', 'scope': scope, 'maxElected': 1},
                     {'position': 'College Auditor', 'scope': scope, 'maxElected': 1},
                     {'position': 'Public Information Officer', 'scope': scope, 'maxElected': 2},
                     {'position': 'Business Manager', 'scope': scope, 'maxElected': 2},
@@ -299,7 +313,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           ],
         ),
         content: const Text(
-          'This will reset the elective positions roster to the official COMSELEC template (7 USG positions and 8 positions for each of the 5 colleges, totaling 47 positions).\n\nAre you sure you want to proceed?',
+          'This will reset the elective positions roster to the official COMSELEC template (7 USG positions and 9 positions for each of the 5 colleges, totaling 52 positions).\n\nAre you sure you want to proceed?',
           style: TextStyle(fontSize: 13, height: 1.4),
         ),
         actions: [
