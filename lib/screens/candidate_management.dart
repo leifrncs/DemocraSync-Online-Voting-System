@@ -16,6 +16,21 @@ class _CandidateManagementState extends State<CandidateManagement> {
   String _selectedScope = 'All';
   String _selectedPosition = 'All';
 
+  // --- VIEW & PAGINATION & SORT STATES ---
+  bool? _userSelectedTableView;
+  String _sortBy = 'Newest First';
+  static const List<String> _sortOptions = [
+    'Newest First',
+    'Name (A-Z)',
+    'Name (Z-A)',
+    'Position',
+    'Party',
+  ];
+
+  int _currentPage = 0;
+  int _pageSize = 8;
+  static const List<int> _pageSizeOptions = [8, 12, 24, 48];
+
   // --- FIREBASE & CONFIG STATES ---
   List<Map<String, dynamic>> _configuredPositions = [];
   List<String> _departmentsList = [];
@@ -896,6 +911,279 @@ class _CandidateManagementState extends State<CandidateManagement> {
     return Container(height: 28, width: 1, color: const Color(0xFFE2E8F0));
   }
 
+  // --- 5. PAGINATED DATA TABLE VIEW (MATCHED SYSTEM TYPOGRAPHY) ---
+  Widget _buildCandidatesTable(List<QueryDocumentSnapshot> pageCandidates) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: LayoutBuilder(
+          builder: (context, tableConstraints) {
+            double availableWidth = tableConstraints.maxWidth;
+            double tableWidth = availableWidth > 980 ? availableWidth : 980;
+            double columnSpacing = availableWidth > 1350 ? 36.0 : (availableWidth > 1100 ? 26.0 : 18.0);
+
+            return Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: tableWidth),
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+                      horizontalMargin: 20,
+                      columnSpacing: columnSpacing,
+                      headingRowHeight: 52,
+                      dataRowMinHeight: 64,
+                      dataRowMaxHeight: 70,
+                      columns: const [
+                        DataColumn(label: Text('Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                        DataColumn(label: Text('College / Scope', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                        DataColumn(label: Text('Position', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                        DataColumn(label: Text('Party Affiliation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                        DataColumn(label: Text('Platform Snippet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                        DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue))),
+                      ],
+                      rows: pageCandidates.map((doc) {
+                        var candidate = doc.data() as Map<String, dynamic>;
+                        String docId = doc.id;
+                        String name = candidate['name'] ?? 'Unnamed Candidate';
+                        String dept = candidate['department'] ?? 'Unknown Scope';
+                        String pos = candidate['position'] ?? 'Unknown Position';
+                        String party = candidate['party'] ?? 'Independent';
+                        String platform = candidate['platform'] ?? 'No platform statement submitted.';
+                        bool isIndependent = party.toLowerCase().contains('independent');
+
+                        return DataRow(
+                          cells: [
+                            // Candidate Name & Initials Avatar
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: nemsuGold,
+                                    child: Text(
+                                      _getInitials(name),
+                                      style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 180),
+                                    child: Text(
+                                      name,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // College / Scope
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  _getScopeAbbreviation(dept),
+                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // Position
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: nemsuBlue.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  pos,
+                                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // Party Affiliation
+                            DataCell(
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                decoration: BoxDecoration(
+                                  color: isIndependent ? const Color(0xFFFEF3C7) : const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isIndependent ? const Color(0xFFFDE68A) : const Color(0xFFBFDBFE),
+                                  ),
+                                ),
+                                child: Text(
+                                  party,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: isIndependent ? const Color(0xFF92400E) : const Color(0xFF1D4ED8),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // Platform Snippet
+                            DataCell(
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 240),
+                                child: InkWell(
+                                  onTap: () => _viewCandidateProfile(candidate),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.format_quote_rounded, size: 14, color: Color(0xFF94A3B8)),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            platform,
+                                            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Color(0xFF475569)),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Actions
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Tooltip(
+                                    message: 'View Full Platform & Profile',
+                                    child: InkWell(
+                                      onTap: () => _viewCandidateProfile(candidate),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF1F5F9),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Icon(Icons.visibility_outlined, size: 16, color: Color(0xFF475569)),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Tooltip(
+                                    message: 'Edit Candidate Profile',
+                                    child: InkWell(
+                                      onTap: () => _showCandidateForm(docId: docId, existingCandidate: candidate),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: nemsuBlue.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Icon(Icons.edit_outlined, size: 16, color: nemsuBlue),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Tooltip(
+                                    message: 'Remove Candidate',
+                                    child: InkWell(
+                                      onTap: () => _confirmDelete(docId, name, dept, pos),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // --- 6. PAGINATED CARD GRID VIEW (RESPONSIVE) ---
+  Widget _buildCandidatesCardGrid(List<QueryDocumentSnapshot> pageCandidates, bool isWide) {
+    return isWide
+        ? GridView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 215,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: pageCandidates.length,
+            itemBuilder: (context, index) {
+              var doc = pageCandidates[index];
+              return _buildCandidateCard(doc.data() as Map<String, dynamic>, doc.id);
+            },
+          )
+        : ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            itemCount: pageCandidates.length,
+            itemBuilder: (context, index) {
+              var doc = pageCandidates[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: SizedBox(
+                  height: 215,
+                  child: _buildCandidateCard(doc.data() as Map<String, dynamic>, doc.id),
+                ),
+              );
+            },
+          );
+  }
+
   // --- 7. CANDIDATE CARD ITEM ---
   Widget _buildCandidateCard(Map<String, dynamic> candidate, String docId) {
     String name = candidate['name'] ?? 'Unnamed Candidate';
@@ -1086,6 +1374,197 @@ class _CandidateManagementState extends State<CandidateManagement> {
     );
   }
 
+  // --- 8. PAGINATION CONTROLS BAR (RESPONSIVE) ---
+  Widget _buildPaginationBar(int totalCount, int totalPages, bool isMobile) {
+    int startItem = totalCount == 0 ? 0 : (_currentPage * _pageSize) + 1;
+    int endItem = ((_currentPage + 1) * _pageSize) > totalCount ? totalCount : ((_currentPage + 1) * _pageSize);
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Text('Rows: ', style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+                    Container(
+                      height: 28,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(5),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _pageSize,
+                          items: _pageSizeOptions.map((size) {
+                            return DropdownMenuItem(value: size, child: Text('$size', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)));
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _pageSize = val;
+                                _currentPage = 0;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Showing $startItem-$endItem of $totalCount',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF334155), fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.first_page_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  tooltip: 'First Page',
+                  color: _currentPage > 0 ? nemsuBlue : Colors.grey.shade400,
+                  onPressed: _currentPage > 0 ? () => setState(() => _currentPage = 0) : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  tooltip: 'Previous Page',
+                  color: _currentPage > 0 ? nemsuBlue : Colors.grey.shade400,
+                  onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                  child: Text(
+                    'Page ${_currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: nemsuBlue),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  tooltip: 'Next Page',
+                  color: _currentPage < totalPages - 1 ? nemsuBlue : Colors.grey.shade400,
+                  onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.last_page_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  tooltip: 'Last Page',
+                  color: _currentPage < totalPages - 1 ? nemsuBlue : Colors.grey.shade400,
+                  onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage = totalPages - 1) : null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left: Rows per page & Range
+          Row(
+            children: [
+              const Text('Rows per page: ', style: TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _pageSize,
+                    items: _pageSizeOptions.map((size) {
+                      return DropdownMenuItem(value: size, child: Text('$size', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _pageSize = val;
+                          _currentPage = 0;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                'Showing $startItem-$endItem of $totalCount candidates',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+
+          // Right: Page navigation buttons
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.first_page_rounded, size: 20),
+                tooltip: 'First Page',
+                color: _currentPage > 0 ? nemsuBlue : Colors.grey.shade400,
+                onPressed: _currentPage > 0 ? () => setState(() => _currentPage = 0) : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                tooltip: 'Previous Page',
+                color: _currentPage > 0 ? nemsuBlue : Colors.grey.shade400,
+                onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  'Page ${_currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                tooltip: 'Next Page',
+                color: _currentPage < totalPages - 1 ? nemsuBlue : Colors.grey.shade400,
+                onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.last_page_rounded, size: 20),
+                tooltip: 'Last Page',
+                color: _currentPage < totalPages - 1 ? nemsuBlue : Colors.grey.shade400,
+                onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage = totalPages - 1) : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoadingConfig) {
@@ -1130,11 +1609,42 @@ class _CandidateManagementState extends State<CandidateManagement> {
           }).toList();
         }
 
+        // Sorting
+        filteredDocs.sort((a, b) {
+          var aData = a.data() as Map<String, dynamic>;
+          var bData = b.data() as Map<String, dynamic>;
+          if (_sortBy == 'Name (A-Z)') return (aData['name'] ?? '').toString().compareTo((bData['name'] ?? '').toString());
+          if (_sortBy == 'Name (Z-A)') return (bData['name'] ?? '').toString().compareTo((aData['name'] ?? '').toString());
+          if (_sortBy == 'Position') return (aData['position'] ?? '').toString().compareTo((bData['position'] ?? '').toString());
+          if (_sortBy == 'Party') return (aData['party'] ?? '').toString().compareTo((bData['party'] ?? '').toString());
+          
+          // Default / Newest First
+          var aTs = aData['timestamp'];
+          var bTs = bData['timestamp'];
+          if (aTs is Timestamp && bTs is Timestamp) {
+            return bTs.compareTo(aTs);
+          }
+          return 0;
+        });
+
+        // Pagination Calculations
+        int totalCount = filteredDocs.length;
+        int totalPages = (totalCount / _pageSize).ceil();
+        if (_currentPage >= totalPages && totalPages > 0) {
+          _currentPage = totalPages - 1;
+        }
+
+        int startIdx = _currentPage * _pageSize;
+        int endIdx = (startIdx + _pageSize) > totalCount ? totalCount : (startIdx + _pageSize);
+        List<QueryDocumentSnapshot> pageCandidates = (startIdx < totalCount) ? filteredDocs.sublist(startIdx, endIdx) : [];
+
         List<String> availablePositionsForScope = ['All', ..._getFilterPositionsList()];
 
         return LayoutBuilder(
           builder: (context, constraints) {
+            bool isMobile = constraints.maxWidth < 700;
             bool isWide = constraints.maxWidth > 850;
+            bool isTableView = _userSelectedTableView ?? !isMobile;
 
             return Column(
               children: [
@@ -1142,7 +1652,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                 Container(
                   width: double.infinity,
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1153,29 +1663,77 @@ class _CandidateManagementState extends State<CandidateManagement> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   'Candidate Management',
-                                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 20 : 23,
+                                    fontWeight: FontWeight.w800,
+                                    color: nemsuBlue,
+                                    letterSpacing: -0.3,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   'Organize and manage candidates for USG and all College Councils in real-time',
-                                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                                  style: TextStyle(fontSize: isMobile ? 12 : 13, color: Colors.grey.shade600),
                                 ),
                               ],
                             ),
                           ),
+
+                          // View Toggle Button Group
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                            ),
+                            child: Row(
+                              children: [
+                                Tooltip(
+                                  message: 'Data Table View',
+                                  child: InkWell(
+                                    onTap: () => setState(() => _userSelectedTableView = true),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: isTableView ? nemsuBlue : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(Icons.table_chart_rounded, size: 18, color: isTableView ? Colors.white : const Color(0xFF64748B)),
+                                    ),
+                                  ),
+                                ),
+                                Tooltip(
+                                  message: 'Card Grid View',
+                                  child: InkWell(
+                                    onTap: () => setState(() => _userSelectedTableView = false),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: !isTableView ? nemsuBlue : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(Icons.grid_view_rounded, size: 18, color: !isTableView ? Colors.white : const Color(0xFF64748B)),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: nemsuBlue,
                               foregroundColor: Colors.white,
                               elevation: 2,
-                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 18, vertical: isMobile ? 10 : 12),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                             onPressed: () => _showCandidateForm(),
                             icon: const Icon(Icons.person_add_alt_1_rounded, size: 18, color: nemsuGold),
-                            label: const Text('Add Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            label: Text(isMobile ? 'Add' : 'Add Candidate', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ),
                         ],
                       ),
@@ -1187,78 +1745,231 @@ class _CandidateManagementState extends State<CandidateManagement> {
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-                // --- INTEGRATED TOOLBAR: SEARCH & SCOPE & POSITION FILTERS ---
+                // --- INTEGRATED TOOLBAR: SEARCH & SCOPE & POSITION & SORT FILTERS ---
                 Container(
                   width: double.infinity,
                   color: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Search Bar & Position Dropdown in 1 Row
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: SizedBox(
-                              height: 40,
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (val) => setState(() => _searchQuery = val),
-                                style: const TextStyle(fontSize: 14),
-                                decoration: InputDecoration(
-                                  hintText: 'Search by candidate name, party, position, or platform...',
-                                  hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
-                                  prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          icon: const Icon(Icons.clear, size: 16),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() => _searchQuery = '');
-                                          },
-                                        )
-                                      : null,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                                  filled: true,
-                                  fillColor: const Color(0xFFF1F5F9),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
+                      // Search Bar & Position & Sort Dropdowns
+                      isMobile
+                          ? SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 220,
+                                    height: 38,
+                                    child: TextField(
+                                      controller: _searchController,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _searchQuery = val;
+                                          _currentPage = 0;
+                                        });
+                                      },
+                                      style: const TextStyle(fontSize: 13),
+                                      decoration: InputDecoration(
+                                        hintText: 'Search candidate, party, position...',
+                                        hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                        prefixIcon: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF64748B)),
+                                        suffixIcon: _searchQuery.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.clear, size: 15),
+                                                onPressed: () {
+                                                  _searchController.clear();
+                                                  setState(() {
+                                                    _searchQuery = '';
+                                                    _currentPage = 0;
+                                                  });
+                                                },
+                                              )
+                                            : null,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                                        filled: true,
+                                        fillColor: const Color(0xFFF1F5F9),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide.none),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
 
-                          // Position Sub-Filter Dropdown
-                          Container(
-                            height: 40,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: availablePositionsForScope.contains(_selectedPosition) ? _selectedPosition : 'All',
-                                icon: const Icon(Icons.filter_list_rounded, size: 18, color: nemsuBlue),
-                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: nemsuBlue),
-                                items: availablePositionsForScope.map((pos) {
-                                  return DropdownMenuItem(
-                                    value: pos,
-                                    child: Text(pos == 'All' ? 'All Positions' : pos, style: const TextStyle(fontSize: 13.5)),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() => _selectedPosition = val);
-                                  }
-                                },
+                                  // Position Sub-Filter Dropdown
+                                  Container(
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(7),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: availablePositionsForScope.contains(_selectedPosition) ? _selectedPosition : 'All',
+                                        icon: const Icon(Icons.filter_list_rounded, size: 15, color: nemsuBlue),
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                        items: availablePositionsForScope.map((pos) {
+                                          return DropdownMenuItem(
+                                            value: pos,
+                                            child: Text(pos == 'All' ? 'All Positions' : pos, style: const TextStyle(fontSize: 12)),
+                                          );
+                                        }).toList(),
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            setState(() {
+                                              _selectedPosition = val;
+                                              _currentPage = 0;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Sort Dropdown
+                                  Container(
+                                    height: 38,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(7),
+                                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: _sortBy,
+                                        icon: const Icon(Icons.sort_rounded, size: 15, color: nemsuBlue),
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                        items: _sortOptions.map((opt) {
+                                          return DropdownMenuItem(
+                                            value: opt,
+                                            child: Text(opt, style: const TextStyle(fontSize: 12)),
+                                          );
+                                        }).toList(),
+                                        onChanged: (val) {
+                                          if (val != null) {
+                                            setState(() {
+                                              _sortBy = val;
+                                              _currentPage = 0;
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: SizedBox(
+                                    height: 40,
+                                    child: TextField(
+                                      controller: _searchController,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _searchQuery = val;
+                                          _currentPage = 0;
+                                        });
+                                      },
+                                      style: const TextStyle(fontSize: 14),
+                                      decoration: InputDecoration(
+                                        hintText: 'Search by candidate name, party, position, or platform...',
+                                        hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
+                                        prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
+                                        suffixIcon: _searchQuery.isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(Icons.clear, size: 16),
+                                                onPressed: () {
+                                                  _searchController.clear();
+                                                  setState(() {
+                                                    _searchQuery = '';
+                                                    _currentPage = 0;
+                                                  });
+                                                },
+                                              )
+                                            : null,
+                                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                                        filled: true,
+                                        fillColor: const Color(0xFFF1F5F9),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+
+                                // Position Sub-Filter Dropdown
+                                Container(
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: availablePositionsForScope.contains(_selectedPosition) ? _selectedPosition : 'All',
+                                      icon: const Icon(Icons.filter_list_rounded, size: 18, color: nemsuBlue),
+                                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                      items: availablePositionsForScope.map((pos) {
+                                        return DropdownMenuItem(
+                                          value: pos,
+                                          child: Text(pos == 'All' ? 'All Positions' : pos, style: const TextStyle(fontSize: 13.5)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _selectedPosition = val;
+                                            _currentPage = 0;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+
+                                // Sort Dropdown
+                                Container(
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _sortBy,
+                                      icon: const Icon(Icons.sort_rounded, size: 18, color: nemsuBlue),
+                                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                      items: _sortOptions.map((opt) {
+                                        return DropdownMenuItem(
+                                          value: opt,
+                                          child: Text('Sort: $opt', style: const TextStyle(fontSize: 13.5)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _sortBy = val;
+                                            _currentPage = 0;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 8),
 
                       // College Scope Filter Chips Bar
@@ -1283,7 +1994,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
-                // --- CANDIDATE CARDS GRID ---
+                // --- CANDIDATE LIST / GRID / TABLE ---
                 Expanded(
                   child: filteredDocs.isEmpty
                       ? Center(
@@ -1313,6 +2024,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                       _searchQuery = '';
                                       _selectedScope = 'All';
                                       _selectedPosition = 'All';
+                                      _sortBy = 'Newest First';
+                                      _currentPage = 0;
                                     });
                                   },
                                   icon: const Icon(Icons.clear_all_rounded, size: 18),
@@ -1333,36 +2046,14 @@ class _CandidateManagementState extends State<CandidateManagement> {
                             ],
                           ),
                         )
-                      : isWide
-                          ? GridView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisExtent: 215,
-                                crossAxisSpacing: 14,
-                                mainAxisSpacing: 12,
-                              ),
-                              itemCount: filteredDocs.length,
-                              itemBuilder: (context, index) {
-                                var doc = filteredDocs[index];
-                                return _buildCandidateCard(doc.data() as Map<String, dynamic>, doc.id);
-                              },
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              itemCount: filteredDocs.length,
-                              itemBuilder: (context, index) {
-                                var doc = filteredDocs[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: SizedBox(
-                                    height: 215,
-                                    child: _buildCandidateCard(doc.data() as Map<String, dynamic>, doc.id),
-                                  ),
-                                );
-                              },
-                            ),
+                      : Padding(
+                          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12.0 : 20.0, vertical: 12.0),
+                          child: isTableView ? _buildCandidatesTable(pageCandidates) : _buildCandidatesCardGrid(pageCandidates, isWide),
+                        ),
                 ),
+
+                // --- PAGINATION BAR ---
+                _buildPaginationBar(totalCount, totalPages, isMobile),
               ],
             );
           },
@@ -1380,6 +2071,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
         setState(() {
           _selectedScope = scope;
           _selectedPosition = 'All'; // Reset position sub-filter on scope change
+          _currentPage = 0;
         });
       },
       borderRadius: BorderRadius.circular(6),
