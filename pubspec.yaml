@@ -84,6 +84,8 @@ flutter:
     - assets/democrasync-logo.png
     - assets/democrasync-logo1.png
     - assets/democrasync-logo-txt.png
+    - assets/nemsu_logo.png
+    - assets/fonts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

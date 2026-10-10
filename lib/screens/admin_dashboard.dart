@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart'; 
 import 'package:pdf/pdf.dart';
@@ -63,39 +64,140 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
       
       groupedCandidates.forEach((key, list) {
-        list.sort((a, b) => ((b['voteCount'] as num?)?.toInt() ?? 0).compareTo((a['voteCount'] as num?)?.toInt() ?? 0));
+        list.sort((a, b) {
+          int voteA = (a['voteCount'] as num?)?.toInt() ?? 0;
+          int voteB = (b['voteCount'] as num?)?.toInt() ?? 0;
+          if (voteB != voteA) {
+            return voteB.compareTo(voteA); // Highest to lowest votes
+          }
+          return (a['name']?.toString() ?? '').compareTo(b['name']?.toString() ?? '');
+        });
       });
 
-      final pdf = pw.Document();
-      final String currentDate = DateFormat('MMMM dd, yyyy - hh:mm a').format(DateTime.now());
+      const positionHierarchy = [
+        'President',
+        'Vice President for Internal Affairs',
+        'Vice President for External Affairs',
+        'Vice President',
+        'Executive Secretary',
+        'Secretary',
+        'Treasurer',
+        'Auditor',
+        'Public Relations Officer',
+        'Senator',
+        'Governor',
+        'Vice Governor',
+        'Secretary Treasurer',
+        'Representative',
+      ];
 
-      final font = await PdfGoogleFonts.openSansRegular();
-      final boldFont = await PdfGoogleFonts.openSansBold();
+      List<MapEntry<String, List<Map<String, dynamic>>>> sortedPositionEntries = groupedCandidates.entries.toList()
+        ..sort((a, b) {
+          int indexA = positionHierarchy.indexOf(a.key);
+          int indexB = positionHierarchy.indexOf(b.key);
+          if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+          if (indexA != -1) return -1;
+          if (indexB != -1) return 1;
+          return a.key.compareTo(b.key);
+        });
+
+      final pdf = pw.Document();
+      final String printedDateTime = DateFormat('MMMM dd, yyyy hh:mm:ss a').format(DateTime.now());
+
+      // Load NEMSU Logo
+      final logoByteData = await rootBundle.load('assets/nemsu_logo.png');
+      final logoImage = pw.MemoryImage(logoByteData.buffer.asUint8List());
+
+      // Load True Arial Fonts
+      final fontData = await rootBundle.load('assets/fonts/arial.ttf');
+      final boldFontData = await rootBundle.load('assets/fonts/arialbd.ttf');
+      final arialFont = pw.Font.ttf(fontData);
+      final arialBoldFont = pw.Font.ttf(boldFontData);
 
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(40),
+          margin: const pw.EdgeInsets.fromLTRB(36, 16, 36, 24),
           theme: pw.ThemeData.withFont(
-            base: font,
-            bold: boldFont,
+            base: arialFont,
+            bold: arialBoldFont,
           ),
+          header: (pw.Context context) {
+            const double logoSize = 48;
+            return pw.Column(
+              children: [
+                pw.Center(
+                  child: pw.Container(
+                    width: logoSize,
+                    height: logoSize,
+                    child: pw.Image(logoImage),
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Center(
+                  child: pw.Text(
+                    'NORTH EASTERN MINDANAO STATE UNIVERSITY',
+                    style: pw.TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.black,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ),
+                pw.SizedBox(height: 2),
+                pw.Center(
+                  child: pw.Text(
+                    'Brgy. Rosario, Tandag City, Surigao del Sur',
+                    style: const pw.TextStyle(
+                      fontSize: 9.5,
+                      color: PdfColors.black,
+                    ),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Divider(thickness: 1.5, color: PdfColors.black),
+                pw.SizedBox(height: 12),
+              ],
+            );
+          },
+          footer: (pw.Context context) {
+            return pw.Column(
+              children: [
+                pw.SizedBox(height: 8),
+                pw.Divider(thickness: 0.5, color: PdfColors.grey400),
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Date/Time Printed : $printedDateTime',
+                      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+                    ),
+                    pw.Text(
+                      'Page ${context.pageNumber} of ${context.pagesCount}',
+                      style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey800),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
           build: (pw.Context context) {
             return [
               pw.Center(
-                child: pw.Column(
-                  children: [
-                    pw.Text('NORTH EASTERN MINDANAO STATE UNIVERSITY', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('DemocraSync - Official Student Election Tally', style: pw.TextStyle(fontSize: 14)),
-                    pw.SizedBox(height: 4),
-                    pw.Text('Generated on: $currentDate', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                    pw.SizedBox(height: 20),
-                    pw.Divider(thickness: 2),
-                    pw.SizedBox(height: 20),
-                  ],
+                child: pw.Text(
+                  'DemocraSync- Official Student Election Tally',
+                  style: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.black,
+                  ),
+                  textAlign: pw.TextAlign.center,
                 ),
               ),
+              pw.SizedBox(height: 14),
 
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
@@ -105,17 +207,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   _buildPdfKpi('Voter Turnout', '${turnout.toStringAsFixed(1)}%'),
                 ],
               ),
-              pw.SizedBox(height: 30),
+              pw.SizedBox(height: 20),
 
-              ...groupedCandidates.entries.map((entry) {
+              ...sortedPositionEntries.map((entry) {
                 String position = entry.key;
                 List<Map<String, dynamic>> candidates = entry.value;
 
                 return pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text(position.toUpperCase(), style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                    pw.SizedBox(height: 8),
+                    pw.Text(
+                      position.toUpperCase(),
+                      style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+                    ),
+                    pw.SizedBox(height: 6),
                     pw.TableHelper.fromTextArray(
                       headers: ['Candidate Name', 'Party Affiliation', 'Total Votes'],
                       data: candidates.map((c) => [
@@ -123,29 +228,39 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         c['party']?.toString() ?? 'Independent',
                         (c['voteCount'] ?? 0).toString(),
                       ]).toList(),
-                      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                      columnWidths: {
+                        0: const pw.FlexColumnWidth(4.5),
+                        1: const pw.FlexColumnWidth(3.5),
+                        2: const pw.FlexColumnWidth(2.0),
+                      },
+                      headerStyle: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
                       headerDecoration: const pw.BoxDecoration(color: PdfColors.blue800),
-                      cellHeight: 25,
+                      headerHeight: 24,
+                      cellStyle: const pw.TextStyle(fontSize: 10),
+                      cellHeight: 22,
+                      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                       cellAlignments: {
                         0: pw.Alignment.centerLeft,
                         1: pw.Alignment.centerLeft,
                         2: pw.Alignment.center,
                       },
                     ),
-                    pw.SizedBox(height: 25),
+                    pw.SizedBox(height: 16),
                   ],
                 );
               }),
 
-              pw.SizedBox(height: 40),
-              pw.Text('CERTIFIED TRUE AND CORRECT BY:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 40),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildSignatureLine('System Administrator'),
-                  _buildSignatureLine('COMSELEC Chairperson'),
-                ],
+              pw.SizedBox(height: 25),
+              pw.Align(
+                alignment: pw.Alignment.centerRight,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('CERTIFIED TRUE AND CORRECT BY:', style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 35),
+                    _buildSignatureLine('COMSELEC Chairperson'),
+                  ],
+                ),
               ),
             ];
           },
@@ -177,9 +292,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   pw.Widget _buildPdfKpi(String title, String value) {
     return pw.Column(
       children: [
-        pw.Text(value, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-        pw.SizedBox(height: 4),
-        pw.Text(title, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+        pw.Text(value, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+        pw.SizedBox(height: 2),
+        pw.Text(title, style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey700)),
       ],
     );
   }
@@ -187,7 +302,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   pw.Widget _buildSignatureLine(String title) {
     return pw.Column(
       children: [
-        pw.Container(width: 150, height: 1, color: PdfColors.black),
+        pw.Container(width: 170, height: 1, color: PdfColors.black),
         pw.SizedBox(height: 4),
         pw.Text(title, style: const pw.TextStyle(fontSize: 10)),
       ],
