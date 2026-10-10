@@ -382,8 +382,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_getAppBarTitle(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                  const Text('Admin', style: TextStyle(color: nemsuGold, fontSize: 11)),
+                  Text(_getAppBarTitle(), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                  const Text('Admin', style: TextStyle(color: nemsuGold, fontSize: 12.5)),
                 ],
               ),
             ),
@@ -398,7 +398,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 textColor: Colors.white,
                 iconColor: nemsuGold,
                 borderColor: nemsuGold.withValues(alpha: 0.35),
-                fontSize: 11,
+                fontSize: 12,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
             ),
@@ -419,8 +419,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text('Status', style: TextStyle(color: nemsuGold, fontSize: 10)),
-                        Text(isActive ? 'ACTIVE' : 'LOCKED', style: TextStyle(color: isActive ? Colors.greenAccent : Colors.grey.shade400, fontSize: 12, fontWeight: FontWeight.bold)),
+                        const Text('Status', style: TextStyle(color: nemsuGold, fontSize: 11.5)),
+                        Text(isActive ? 'ACTIVE' : 'LOCKED', style: TextStyle(color: isActive ? Colors.greenAccent : Colors.grey.shade400, fontSize: 13, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   Switch(
@@ -709,14 +709,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               const SizedBox(width: 8),
                               const Text(
                                 'Election Overview',
-                                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
+                                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
                               ),
                             ],
                           ),
                           const SizedBox(height: 2),
                           const Text(
                             'Real-time voter turnout and candidate tally statistics',
-                            style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
                           ),
                         ],
                       ),
@@ -820,8 +820,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 const Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Live Tally Board', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                                    Text('Select scope to inspect candidate standings', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                                    Text('Live Tally Board', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                                    Text('Select scope to inspect candidate standings', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                                   ],
                                 ),
                               ],
@@ -839,7 +839,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   isExpanded: true,
                                   value: _selectedTallyScope,
                                   icon: const Icon(Icons.keyboard_arrow_down_rounded, color: nemsuBlue),
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: nemsuBlue),
+                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: nemsuBlue),
                                   items: _tallyScopes.map<DropdownMenuItem<String>>((String scope) {
                                     return DropdownMenuItem<String>(
                                       value: scope,
@@ -924,7 +924,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                           const SizedBox(width: 8),
                                           Text(
                                             entry.key.toUpperCase(),
-                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: 0.5),
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: 0.5),
                                           ),
                                           const SizedBox(width: 8),
                                           Container(
@@ -935,7 +935,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                             ),
                                             child: Text(
                                               '$totalPosVotes total votes',
-                                              style: const TextStyle(fontSize: 10, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                                             ),
                                           ),
                                         ],
@@ -1033,7 +1033,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SizedBox(width: 8),
                   const Text(
                     'Turnout by Department',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 13),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 15),
                   ),
                 ],
               ),
@@ -1045,7 +1045,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
                 child: Text(
                   '$totalVotes Cast',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: nemsuBlue),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: nemsuBlue),
                 ),
               ),
             ],
@@ -1086,11 +1086,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               children: [
                                 Text(
                                   '$totalVotes',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: nemsuBlue),
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: nemsuBlue),
                                 ),
                                 const Text(
                                   'Votes',
-                                  style: TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+                                  style: TextStyle(fontSize: 11.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -1125,7 +1125,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     Expanded(
                                       child: Text(
                                         item.key,
-                                        style: const TextStyle(fontSize: 11, color: Color(0xFF334155), fontWeight: FontWeight.w500),
+                                        style: const TextStyle(fontSize: 12.5, color: Color(0xFF334155), fontWeight: FontWeight.w500),
                                         overflow: TextOverflow.ellipsis,
                                         maxLines: 1,
                                       ),
@@ -1133,7 +1133,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                     const SizedBox(width: 4),
                                     Text(
                                       '${item.value}',
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: nemsuBlue),
                                     ),
                                     const SizedBox(width: 4),
                                     Container(
@@ -1144,7 +1144,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                       ),
                                       child: Text(
                                         '${pct.toStringAsFixed(0)}%',
-                                        style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: itemColor),
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: itemColor),
                                       ),
                                     ),
                                   ],
@@ -1242,13 +1242,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   const SizedBox(width: 8),
                   const Text(
                     'Votes per Position',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 13),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue, fontSize: 15),
                   ),
                 ],
               ),
               const Text(
                 'Hover/tap for details',
-                style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -1278,11 +1278,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           String fullPos = positionVotes.keys.elementAt(group.x.toInt());
                           return BarTooltipItem(
                             '$fullPos\n',
-                            const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.normal),
+                            const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.normal),
                             children: [
                               TextSpan(
                                 text: '${rod.toY.toInt()} Votes',
-                                style: const TextStyle(color: nemsuGold, fontSize: 12, fontWeight: FontWeight.bold),
+                                style: const TextStyle(color: nemsuGold, fontSize: 13.5, fontWeight: FontWeight.bold),
                               ),
                             ],
                           );
@@ -1302,7 +1302,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                               padding: const EdgeInsets.only(top: 6.0),
                               child: Text(
                                 titles[idx],
-                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 9, fontWeight: FontWeight.w500),
+                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 11.5, fontWeight: FontWeight.w500),
                                 textAlign: TextAlign.center,
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
@@ -1321,7 +1321,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             }
                             return Text(
                               value.toInt().toString(),
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9),
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                               textAlign: TextAlign.left,
                             );
                           },
@@ -1415,7 +1415,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 2),
             Text(
               title,
-              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1490,7 +1490,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           const SizedBox(height: 2),
           const Text(
             'Voter Turnout',
-            style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w600),
+            style: TextStyle(color: Color(0xFF64748B), fontSize: 13, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6), 
           ClipRRect(
@@ -1546,7 +1546,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     Flexible(
                       child: Text(
                         name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1E293B)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1566,7 +1566,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             SizedBox(width: 2),
                             Text(
                               'LEADING',
-                              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Color(0xFFB45309), letterSpacing: 0.3),
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Color(0xFFB45309), letterSpacing: 0.3),
                             ),
                           ],
                         ),
@@ -1577,7 +1577,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(height: 2),
                 Text(
                   party,
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -1594,17 +1594,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     Text(
                       '$votes',
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: nemsuBlue, fontSize: 13),
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: nemsuBlue, fontSize: 14.5),
                     ),
                     const Text(
                       ' votes',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       '(${(percentage * 100).toStringAsFixed(1)}%)',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: isLeading ? const Color(0xFFB45309) : const Color(0xFF64748B),
                       ),

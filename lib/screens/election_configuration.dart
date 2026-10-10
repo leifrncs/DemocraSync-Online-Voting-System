@@ -309,15 +309,15 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           children: [
             Icon(Icons.restart_alt_rounded, color: nemsuBlue, size: 22),
             SizedBox(width: 8),
-            Text('Restore Standard Positions?', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Restore Standard Positions?', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: const Text(
           'This will reset the elective positions roster to the official COMSELEC template (7 USG positions and 9 positions for each of the 5 colleges, totaling 52 positions).\n\nAre you sure you want to proceed?',
-          style: TextStyle(fontSize: 13, height: 1.4),
+          style: TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(fontSize: 13.5))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: nemsuBlue,
@@ -325,7 +325,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restore All Standard Positions'),
+            child: const Text('Restore All Standard Positions', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -419,19 +419,19 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
             SizedBox(width: 8),
-            Text('Reset Election Data?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Reset Election Data?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: const Text(
           'This will permanently delete all cast votes, reset all candidate tallies to zero, and restore voting eligibility for all students.\n\nThis action CANNOT be undone.',
-          style: TextStyle(fontSize: 13, height: 1.4),
+          style: TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(fontSize: 13.5))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(context, true), 
-            child: const Text('Confirm Reset'),
+            child: const Text('Confirm Reset', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -539,7 +539,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                   const SizedBox(width: 8),
                   Text(
                     isEdit ? 'Edit Elective Position' : 'Add Elective Position',
-                    style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ],
               ),
@@ -572,7 +572,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                         ),
                         items: scopes.map((s) => DropdownMenuItem(
                           value: s, 
-                          child: Text(s, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)
+                          child: Text(s, style: const TextStyle(fontSize: 13.5), overflow: TextOverflow.ellipsis)
                         )).toList(),
                         onChanged: (val) => setDialogState(() => selectedScope = val!),
                       ),
@@ -593,7 +593,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(fontSize: 13.5))),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: nemsuBlue,
@@ -619,7 +619,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                     });
                     Navigator.pop(context);
                   },
-                  child: Text(isEdit ? 'Update Position' : 'Save Position'),
+                  child: Text(isEdit ? 'Update Position' : 'Save Position', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -700,7 +700,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                               Flexible(
                                 child: Text(
                                   'Election Configuration',
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
+                                  style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -723,7 +723,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                                     const SizedBox(width: 4),
                                     Text(
                                       status,
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.3),
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.3),
                                     ),
                                   ],
                                 ),
@@ -733,7 +733,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           const SizedBox(height: 2),
                           const Text(
                             'Configure schedules, available seats, academic term, and AI OCR',
-                            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -754,7 +754,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           : const Icon(Icons.cloud_upload_rounded, size: 15),
                       label: Text(
                         _isSaving ? 'Saving...' : 'Save Configuration',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5),
+                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
                       ),
                     ),
                   ],
@@ -783,8 +783,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
                     dividerColor: Colors.transparent,
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11.5),
-                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
                     tabs: [
                       const Tab(
                         height: 32,
@@ -819,7 +819,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                                 ),
                                 child: Text(
                                   '${positionRules.length}',
-                                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: nemsuBlue),
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: nemsuBlue),
                                 ),
                               ),
                             ],
@@ -923,8 +923,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Election Schedule', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                  Text('Voting window opening and closing dates/times', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text('Election Schedule', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                  Text('Voting window opening and closing dates/times', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                 ],
               ),
             ],
@@ -966,7 +966,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 Expanded(
                   child: Text(
                     'Student ballots will automatically lock outside these scheduled hours.',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700),
                   ),
                 ),
               ],
@@ -1005,8 +1005,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Academic Period & COR Verification', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                  Text('Term matching rules for student registrations', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text('Academic Period & COR Verification', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                  Text('Term matching rules for student registrations', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                 ],
               ),
             ],
@@ -1046,7 +1046,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           Text(
                             'Enforce Term Matching on CORs',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13.5,
                               fontWeight: FontWeight.bold,
                               color: _enforceTermVerification ? const Color(0xFF15803D) : const Color(0xFF334155),
                             ),
@@ -1056,7 +1056,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                       const SizedBox(height: 4),
                       Text(
                         'Automatically flag or reject Certificate of Registration (COR) documents from past academic years or semesters.',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
                       ),
                     ],
                   ),
@@ -1109,11 +1109,11 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
+                Text(label, style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
                   '$formattedDate  •  $formattedTime',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
+                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: Color(0xFF1E293B)),
                 ),
               ],
             ),
@@ -1127,7 +1127,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             ),
             onPressed: onChange,
             icon: const Icon(Icons.edit_calendar_rounded, size: 14),
-            label: const Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            label: const Text('Change', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1163,10 +1163,10 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                             child: TextField(
                               controller: _searchController,
                               onChanged: (val) => setState(() => _positionSearchQuery = val),
-                              style: const TextStyle(fontSize: 12),
+                              style: const TextStyle(fontSize: 13.5),
                               decoration: InputDecoration(
                                 hintText: 'Search elective positions...',
-                                hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                                 prefixIcon: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF64748B)),
                                 suffixIcon: _positionSearchQuery.isNotEmpty
                                     ? IconButton(
@@ -1195,7 +1195,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           ),
                           onPressed: _restoreStandardPositions,
                           icon: const Icon(Icons.restart_alt_rounded, size: 15),
-                          label: const Text('Restore Template', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text('Restore Template', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
@@ -1207,7 +1207,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           ),
                           onPressed: () => _showPositionForm(),
                           icon: const Icon(Icons.add_rounded, size: 16),
-                          label: const Text('Add Position', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          label: const Text('Add Position', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     )
@@ -1223,10 +1223,10 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                                 child: TextField(
                                   controller: _searchController,
                                   onChanged: (val) => setState(() => _positionSearchQuery = val),
-                                  style: const TextStyle(fontSize: 12),
+                                  style: const TextStyle(fontSize: 13.5),
                                   decoration: InputDecoration(
                                     hintText: 'Search position titles...',
-                                    hintStyle: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                    hintStyle: const TextStyle(fontSize: 12.5, color: Color(0xFF94A3B8)),
                                     prefixIcon: const Icon(Icons.search_rounded, size: 16, color: Color(0xFF64748B)),
                                     suffixIcon: _positionSearchQuery.isNotEmpty
                                         ? IconButton(
@@ -1255,7 +1255,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                               ),
                               onPressed: () => _showPositionForm(),
                               icon: const Icon(Icons.add_rounded, size: 16),
-                              label: const Text('Add Position', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              label: const Text('Add Position', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -1271,7 +1271,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                               ),
                               onPressed: _restoreStandardPositions,
                               icon: const Icon(Icons.restart_alt_rounded, size: 14),
-                              label: const Text('Restore Standard Template', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                              label: const Text('Restore Standard Template', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -1322,14 +1322,14 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                             _positionSearchQuery.isNotEmpty || _selectedScopeFilter != 'All'
                                 ? 'No elective positions matching this filter.'
                                 : 'No elective positions configured yet.',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13.5),
                           ),
                           const SizedBox(height: 10),
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(backgroundColor: nemsuBlue, foregroundColor: Colors.white),
                             onPressed: _restoreStandardPositions,
                             icon: const Icon(Icons.refresh_rounded, size: 15),
-                            label: const Text('Generate Standard Positions', style: TextStyle(fontSize: 12)),
+                            label: const Text('Generate Standard Positions', style: TextStyle(fontSize: 13)),
                           ),
                         ],
                       ),
@@ -1339,7 +1339,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            mainAxisExtent: 68,
+                            mainAxisExtent: 74,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 10,
                           ),
@@ -1414,14 +1414,14 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
               children: [
                 Text(
                   rule['position'] ?? 'Unknown',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E293B)),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: Color(0xFF1E293B)),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   scope,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
@@ -1438,7 +1438,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             ),
             child: Text(
               '$seats ${seats == 1 ? "Seat" : "Seats"}',
-              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: nemsuBlue),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: nemsuBlue),
             ),
           ),
           const SizedBox(width: 4),
@@ -1469,7 +1469,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
       selected: isSelected,
       label: Text('$label ($count)'),
       labelStyle: TextStyle(
-        fontSize: 10.5,
+        fontSize: 12.5,
         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         color: isSelected ? Colors.white : const Color(0xFF334155),
       ),
@@ -1544,8 +1544,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Google Gemini Vision AI OCR Engine', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                  Text('Automated student COR verification across platforms', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  Text('Google Gemini Vision AI OCR Engine', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: nemsuBlue)),
+                  Text('Automated student COR verification across platforms', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                 ],
               ),
             ],
@@ -1562,9 +1562,9 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             },
             decoration: InputDecoration(
               labelText: 'Google Gemini API Key',
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
               hintText: 'Enter Gemini API Key (AIzaSy...)',
-              hintStyle: const TextStyle(fontSize: 12),
+              hintStyle: const TextStyle(fontSize: 13),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1581,9 +1581,9 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             initialValue: _availableVisionModels.contains(_activeModelName) ? _activeModelName : _availableVisionModels.first,
             decoration: InputDecoration(
               labelText: 'Selected Multimodal Model',
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
               helperText: 'Select high-throughput vision model (e.g. gemini-2.5-flash)',
-              helperStyle: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+              helperStyle: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1593,7 +1593,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             items: _availableVisionModels.map((model) {
               return DropdownMenuItem<String>(
                 value: model,
-                child: Text(model, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                child: Text(model, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500)),
               );
             }).toList(),
             onChanged: (newModel) {
@@ -1620,13 +1620,13 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 icon: _isTestingKey
                     ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.network_check_rounded, size: 16),
-                label: const Text('Test Connection', style: TextStyle(fontSize: 12)),
+                label: const Text('Test Connection', style: TextStyle(fontSize: 13.5)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Active: $_activeModelName',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1661,7 +1661,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                           _lastTestResult!.isValid ? 'Connection Verified' : 'Connection Failed',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: 13.5,
                             color: _lastTestResult!.isValid ? const Color(0xFF15803D) : const Color(0xFFB91C1C),
                           ),
                         ),
@@ -1671,13 +1671,13 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                   const SizedBox(height: 4),
                   Text(
                     _lastTestResult!.message,
-                    style: TextStyle(fontSize: 11, color: _lastTestResult!.isValid ? const Color(0xFF166534) : const Color(0xFF991B1B)),
+                    style: TextStyle(fontSize: 12.5, color: _lastTestResult!.isValid ? const Color(0xFF166534) : const Color(0xFF991B1B)),
                   ),
                   if (_lastTestResult!.troubleshootingTip != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Tip: ${_lastTestResult!.troubleshootingTip}',
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF92400E)),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF92400E)),
                     ),
                   ],
                 ],
@@ -1704,13 +1704,13 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             children: [
               Icon(Icons.dangerous_rounded, color: Color(0xFFE11D48), size: 20),
               SizedBox(width: 8),
-              Text('System Danger Zone', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFBE123C))),
+              Text('System Danger Zone', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFFBE123C))),
             ],
           ),
           const SizedBox(height: 10),
           const Text(
             'Emergency maintenance action to reset all election tally data for a fresh election run.',
-            style: TextStyle(fontSize: 11, color: Color(0xFF9F1239), height: 1.4),
+            style: TextStyle(fontSize: 12.5, color: Color(0xFF9F1239), height: 1.4),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -1723,7 +1723,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             ),
             onPressed: _resetElectionData,
             icon: const Icon(Icons.delete_forever_rounded, size: 16),
-            label: const Text('Reset All Election Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            label: const Text('Reset All Election Data', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
           ),
         ],
       ),
@@ -1737,7 +1737,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           : _academicYearOptions.first,
       decoration: InputDecoration(
         labelText: 'Academic Year (A.Y.)',
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1747,7 +1747,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
       items: _academicYearOptions.map((ay) {
         return DropdownMenuItem<String>(
           value: ay,
-          child: Text('A.Y. $ay', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          child: Text('A.Y. $ay', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500)),
         );
       }).toList(),
       onChanged: (newAy) {
@@ -1763,7 +1763,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           : _semesterOptions.first,
       decoration: InputDecoration(
         labelText: 'Semester / Term',
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -1773,7 +1773,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
       items: _semesterOptions.map((sem) {
         return DropdownMenuItem<String>(
           value: sem,
-          child: Text(sem, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          child: Text(sem, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500)),
         );
       }).toList(),
       onChanged: (newSem) {

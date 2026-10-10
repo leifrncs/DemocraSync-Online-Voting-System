@@ -270,12 +270,12 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                   children: [
                                     Text(
                                       isEdit ? 'Edit Candidate Profile' : 'Register New Candidate',
-                                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: nemsuBlue),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       isEdit ? 'Update details for this candidate' : 'Add a candidate to the official election roster',
-                                      style: const TextStyle(fontSize: 12.5, color: Color(0xFF64748B)),
+                                      style: const TextStyle(fontSize: 13.5, color: Color(0xFF64748B)),
                                     ),
                                   ],
                                 ),
@@ -291,14 +291,14 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           const SizedBox(height: 18),
 
                           // 1. Candidate Full Name
-                          const Text('Candidate Full Name', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          const Text('Candidate Full Name', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: nameController,
                             style: const TextStyle(fontSize: 14),
                             decoration: InputDecoration(
                               hintText: 'e.g. Juan D. Dela Cruz',
-                              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                              hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
                               prefixIcon: const Icon(Icons.person_outline_rounded, size: 20, color: Color(0xFF64748B)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                               filled: true,
@@ -312,7 +312,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           const SizedBox(height: 16),
 
                           // 2. Department / College Scope Dropdown
-                          const Text('College Scope / Department', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          const Text('College Scope / Department', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 6),
                           InputDecorator(
                             decoration: InputDecoration(
@@ -329,11 +329,11 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                 value: _departmentsList.contains(formDept) ? formDept : _departmentsList.first,
                                 isExpanded: true,
                                 icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF64748B)),
-                                style: const TextStyle(fontSize: 13.5, color: Color(0xFF1E293B)),
+                                style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
                                 items: _departmentsList.map((d) {
                                   return DropdownMenuItem(
                                     value: d,
-                                    child: Text(d, style: const TextStyle(fontSize: 13.5), overflow: TextOverflow.ellipsis),
+                                    child: Text(d, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (newDept) {
@@ -351,7 +351,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           const SizedBox(height: 16),
 
                           // 3. Dynamic Position Dropdown
-                          const Text('Elective Position', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          const Text('Elective Position', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 6),
                           InputDecorator(
                             decoration: InputDecoration(
@@ -368,11 +368,11 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                 value: availablePositions.contains(formPos) ? formPos : (availablePositions.isNotEmpty ? availablePositions.first : null),
                                 isExpanded: true,
                                 icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF64748B)),
-                                style: const TextStyle(fontSize: 13.5, color: Color(0xFF1E293B)),
+                                style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
                                 items: availablePositions.map((pos) {
                                   return DropdownMenuItem(
                                     value: pos,
-                                    child: Text(pos, style: const TextStyle(fontSize: 13.5), overflow: TextOverflow.ellipsis),
+                                    child: Text(pos, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
@@ -386,14 +386,14 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           const SizedBox(height: 16),
 
                           // 4. Political Party & Quick Chips
-                          const Text('Political Party / Affiliation', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          const Text('Political Party / Affiliation', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: partyController,
                             style: const TextStyle(fontSize: 14),
                             decoration: InputDecoration(
                               hintText: 'e.g. Independent, Alyansa, Lakas',
-                              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                              hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
                               prefixIcon: const Icon(Icons.flag_outlined, size: 20, color: Color(0xFF64748B)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                               filled: true,
@@ -430,7 +430,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                       child: Text(
                                         party,
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 12.5,
                                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                                           color: isSelected ? const Color(0xFF92400E) : const Color(0xFF475569),
                                         ),
@@ -444,15 +444,15 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           const SizedBox(height: 16),
 
                           // 5. Campaign Platform / Manifesto
-                          const Text('Campaign Platform & Manifesto', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
+                          const Text('Campaign Platform & Manifesto', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155))),
                           const SizedBox(height: 6),
                           TextFormField(
                             controller: platformController,
                             maxLines: 3,
-                            style: const TextStyle(fontSize: 13.5),
+                            style: const TextStyle(fontSize: 14),
                             decoration: InputDecoration(
                               hintText: 'Describe key advocacies, goals, and platform points...',
-                              hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                              hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
                               contentPadding: const EdgeInsets.all(13),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
@@ -470,7 +470,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
                                 style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11)),
-                                child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 13.5)),
+                                child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 14)),
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
@@ -594,7 +594,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                         backgroundColor: nemsuGold,
                         child: Text(
                           _getInitials(name),
-                          style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.w900, fontSize: 20),
+                          style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.w900, fontSize: 22),
                         ),
                       ),
                       const SizedBox(width: 14),
@@ -604,12 +604,12 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           children: [
                             Text(
                               name,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
                             ),
                             const SizedBox(height: 3),
                             Text(
                               '$pos  •  $party',
-                              style: const TextStyle(color: nemsuGold, fontSize: 13.5, fontWeight: FontWeight.w600),
+                              style: const TextStyle(color: nemsuGold, fontSize: 14.5, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
@@ -644,7 +644,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                 const SizedBox(width: 6),
                                 Text(
                                   _getScopeAbbreviation(dept),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                                 ),
                               ],
                             ),
@@ -664,7 +664,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                 const SizedBox(width: 6),
                                 Text(
                                   '$voteCount votes recorded',
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
                                 ),
                               ],
                             ),
@@ -676,7 +676,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                       // Platform Section
                       const Text(
                         'Campaign Platform & Manifesto',
-                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                        style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold, color: nemsuBlue),
                       ),
                       const SizedBox(height: 8),
                       Container(
@@ -689,7 +689,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                         ),
                         child: Text(
                           platform,
-                          style: const TextStyle(fontSize: 14, height: 1.5, color: Color(0xFF334155)),
+                          style: const TextStyle(fontSize: 14.5, height: 1.5, color: Color(0xFF334155)),
                         ),
                       ),
                     ],
@@ -725,15 +725,15 @@ class _CandidateManagementState extends State<CandidateManagement> {
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 24),
             SizedBox(width: 8),
-            Text('Remove Candidate?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Remove Candidate?', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: Text(
           'Are you sure you want to permanently remove $candidateName ($position - ${_getScopeAbbreviation(department)}) from the official election roster?',
-          style: const TextStyle(fontSize: 13.5, height: 1.4),
+          style: const TextStyle(fontSize: 14, height: 1.4),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 13.5))),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 14))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
             onPressed: () async {
@@ -759,7 +759,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                 );
               }
             },
-            child: const Text('Confirm Remove', style: TextStyle(fontSize: 13.5)),
+            child: const Text('Confirm Remove', style: TextStyle(fontSize: 14)),
           ),
         ],
       ),
@@ -931,7 +931,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                     backgroundColor: nemsuGold,
                     child: Text(
                       _getInitials(name),
-                      style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.w900, fontSize: 14),
+                      style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.w900, fontSize: 15),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -941,7 +941,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: nemsuBlue),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: nemsuBlue),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -959,7 +959,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               ),
                               child: Text(
                                 pos,
-                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
                               ),
                             ),
                             // Scope Tag
@@ -971,7 +971,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               ),
                               child: Text(
                                 _getScopeAbbreviation(dept),
-                                style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                               ),
                             ),
                           ],
@@ -992,7 +992,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                     child: Text(
                       party,
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.bold,
                         color: isIndependent ? const Color(0xFF92400E) : const Color(0xFF1D4ED8),
                       ),
@@ -1018,7 +1018,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                       Expanded(
                         child: Text(
                           platform,
-                          style: const TextStyle(fontSize: 12.5, fontStyle: FontStyle.italic, color: Color(0xFF475569), height: 1.35),
+                          style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: Color(0xFF475569), height: 1.35),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1043,7 +1043,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                     ),
                     onPressed: () => _viewCandidateProfile(candidate),
                     icon: const Icon(Icons.visibility_outlined, size: 15, color: Color(0xFF64748B)),
-                    label: const Text('View Platform', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                    label: const Text('View Platform', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1059,7 +1059,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                         ),
                         onPressed: () => _showCandidateForm(docId: docId, existingCandidate: candidate),
                         icon: const Icon(Icons.edit_outlined, size: 13),
-                        label: const Text('Edit', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: const Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                       const SizedBox(width: 6),
                       OutlinedButton.icon(
@@ -1073,7 +1073,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                         ),
                         onPressed: () => _confirmDelete(docId, name, dept, pos),
                         icon: const Icon(Icons.delete_outline_rounded, size: 13),
-                        label: const Text('Remove', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: const Text('Remove', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -1205,10 +1205,10 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               child: TextField(
                                 controller: _searchController,
                                 onChanged: (val) => setState(() => _searchQuery = val),
-                                style: const TextStyle(fontSize: 13.5),
+                                style: const TextStyle(fontSize: 14),
                                 decoration: InputDecoration(
                                   hintText: 'Search by candidate name, party, position, or platform...',
-                                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                                  hintStyle: const TextStyle(fontSize: 13.5, color: Color(0xFF94A3B8)),
                                   prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF64748B)),
                                   suffixIcon: _searchQuery.isNotEmpty
                                       ? IconButton(
@@ -1242,11 +1242,11 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               child: DropdownButton<String>(
                                 value: availablePositionsForScope.contains(_selectedPosition) ? _selectedPosition : 'All',
                                 icon: const Icon(Icons.filter_list_rounded, size: 18, color: nemsuBlue),
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: nemsuBlue),
                                 items: availablePositionsForScope.map((pos) {
                                   return DropdownMenuItem(
                                     value: pos,
-                                    child: Text(pos == 'All' ? 'All Positions' : pos, style: const TextStyle(fontSize: 13)),
+                                    child: Text(pos == 'All' ? 'All Positions' : pos, style: const TextStyle(fontSize: 13.5)),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
@@ -1338,7 +1338,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
-                                mainAxisExtent: 195,
+                                mainAxisExtent: 215,
                                 crossAxisSpacing: 14,
                                 mainAxisSpacing: 12,
                               ),
@@ -1356,7 +1356,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
                                   child: SizedBox(
-                                    height: 195,
+                                    height: 215,
                                     child: _buildCandidateCard(doc.data() as Map<String, dynamic>, doc.id),
                                   ),
                                 );
@@ -1398,7 +1398,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                 color: isSelected ? Colors.white : const Color(0xFF475569),
               ),
@@ -1413,7 +1413,7 @@ class _CandidateManagementState extends State<CandidateManagement> {
               child: Text(
                 '$count',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: isSelected ? nemsuBlue : const Color(0xFF334155),
                 ),
