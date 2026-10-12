@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
+import '../utils/election_schedule_helper.dart';
 import '../widgets/logout_dialog.dart';
 import '../widgets/voting_receipt_dialog.dart';
 import '../widgets/real_time_clock.dart';
@@ -28,6 +30,47 @@ class StudentMainScreen extends StatefulWidget {
 class _StudentMainScreenState extends State<StudentMainScreen> {
   int _selectedIndex = 0;
   bool _guidelinesAccepted = false;
+  Timer? _ballotWatchdogTimer;
+
+  // 👉 Stabilized streams initialized once to prevent StreamBuilder re-subscribing & flickering
+  late final Stream<DocumentSnapshot> _electionToggleStream;
+  late final Stream<DocumentSnapshot> _electionConfigStream;
+  late final Stream<DocumentSnapshot> _voterStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _electionToggleStream = FirebaseFirestore.instance.collection('settings').doc('election').snapshots();
+    _electionConfigStream = FirebaseFirestore.instance.collection('config').doc('election_settings').snapshots();
+    _voterStream = FirebaseFirestore.instance.collection('voters').doc(widget.studentId).snapshots();
+  }
+
+  @override
+  void dispose() {
+    _ballotWatchdogTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onTabChanged(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _updateBallotWatchdog();
+    });
+  }
+
+  /// Watchdog runs only when user is inside the Ballot tab to eject them if voting time ends
+  void _updateBallotWatchdog() {
+    if (_selectedIndex == 1) {
+      _ballotWatchdogTimer ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _selectedIndex == 1) {
+          setState(() {});
+        }
+      });
+    } else {
+      _ballotWatchdogTimer?.cancel();
+      _ballotWatchdogTimer = null;
+    }
+  }
 
   String _getAppBarTitle() {
     switch (_selectedIndex) {
@@ -64,28 +107,130 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
     );
   }
 
-  // 👉 NEW: The screen shown when the admin has toggled the election OFF
-  Widget _buildElectionClosedScreen() {
+  /// Screen shown when voting is locked (upcoming, concluded, paused, or unconfigured)
+  Widget _buildElectionLockedScreen(ElectionScheduleState state) {
+    Color iconColor;
+    Color iconBg;
+    IconData iconData;
+
+    switch (state.status) {
+      case ElectionScheduleStatus.upcoming:
+        iconColor = Colors.amber.shade800;
+        iconBg = Colors.amber.shade50;
+        iconData = Icons.schedule_rounded;
+        break;
+      case ElectionScheduleStatus.ended:
+        iconColor = Colors.red.shade600;
+        iconBg = Colors.red.shade50;
+        iconData = Icons.event_busy_rounded;
+        break;
+      case ElectionScheduleStatus.manuallyLocked:
+        iconColor = Colors.orange.shade800;
+        iconBg = Colors.orange.shade50;
+        iconData = Icons.pause_circle_filled_rounded;
+        break;
+      default:
+        iconColor = Colors.blueGrey.shade600;
+        iconBg = Colors.blueGrey.shade50;
+        iconData = Icons.lock_clock_rounded;
+        break;
+    }
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-              child: Icon(Icons.block_rounded, size: 80, color: Colors.red.shade400),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 550),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                  child: Icon(iconData, size: 76, color: iconColor),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  state.statusHeadline,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  state.statusDescription,
+                  style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+
+                if (state.start != null && state.end != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.play_circle_fill_rounded, size: 16, color: Color(0xFF10B981)),
+                            const SizedBox(width: 8),
+                            const Text('Starts: ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                            Expanded(
+                              child: Text(
+                                state.formattedStart,
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.stop_circle_rounded, size: 16, color: Color(0xFFE11D48)),
+                            const SizedBox(width: 8),
+                            const Text('Ends: ', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                            Expanded(
+                              child: Text(
+                                state.formattedEnd,
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+
+                SizedBox(
+                  width: 240,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: nemsuBlue, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _onTabChanged(0),
+                    icon: const Icon(Icons.arrow_back_rounded, color: nemsuBlue),
+                    label: const Text(
+                      'Back to Dashboard',
+                      style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            const Text('Election is Closed', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
-            const SizedBox(height: 12),
-            const Text(
-              'The COMSELEC has not yet opened the voting period or it has already ended. Please wait for official announcements.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -145,11 +290,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () {
-                  setState(() {
-                    _selectedIndex = 0; 
-                  });
-                },
+                onPressed: () => _onTabChanged(0),
                 icon: const Icon(Icons.home_rounded, color: nemsuBlue),
                 label: const Text(
                   'Return to Dashboard',
@@ -171,15 +312,18 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
     );
   }
 
-  // 👉 UPDATED: Now receives the isElectionActive status
-  Widget _buildDynamicBody(bool isVerified, bool hasVoted, bool isElectionActive) {
+  Widget _buildDynamicBody(bool isVerified, bool hasVoted, ElectionScheduleState scheduleState) {
     switch (_selectedIndex) {
       case 0: 
         return DashboardScreen(
           studentName: widget.studentName, 
           studentDept: widget.studentDept,
           hasVoted: hasVoted, 
-          isElectionActive: isElectionActive, // Pass it down to the dashboard
+          isElectionActive: scheduleState.canVote,
+          scheduleState: scheduleState,
+          onStatusChanged: () {
+            if (mounted) setState(() {});
+          },
           onViewVotes: () {
             showVotingReceiptDialog(
               context,
@@ -188,11 +332,11 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
               studentDept: widget.studentDept,
             );
           },
-          onNavigateToBallot: () => setState(() => _selectedIndex = 1),
+          onNavigateToBallot: () => _onTabChanged(1),
         );
       case 1: 
         if (hasVoted) return _buildVotedMessage();
-        if (!isElectionActive) return _buildElectionClosedScreen(); // 👉 Blocks the ballot!
+        if (!scheduleState.canVote) return _buildElectionLockedScreen(scheduleState);
         if (!isVerified) return _buildLockScreen();
         return _guidelinesAccepted 
             ? BallotScreen(
@@ -210,88 +354,94 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 👉 THE FIX: Added an outer StreamBuilder to listen to the global Election status
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('settings').doc('election').snapshots(),
+      stream: _electionToggleStream,
       builder: (context, electionSnapshot) {
-        
-        bool isElectionActive = false;
-        if (electionSnapshot.hasData && electionSnapshot.data!.exists) {
-           isElectionActive = (electionSnapshot.data!.data() as Map<String, dynamic>?)?['isActive'] ?? false;
-        }
-
         return StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance.collection('voters').doc(widget.studentId).snapshots(),
-          builder: (context, snapshot) {
-            
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator(color: nemsuBlue)));
-            }
-            
-            var data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
-            bool isVerified = data['status'] == 'Verified';
-            bool hasVoted = data['hasVoted'] ?? false;
+          stream: _electionConfigStream,
+          builder: (context, configSnapshot) {
+            final electionToggleData = electionSnapshot.data?.data() as Map<String, dynamic>?;
+            final electionConfigData = configSnapshot.data?.data() as Map<String, dynamic>?;
 
-            // Only hide the nav bar if the ballot is genuinely open
-            bool isBallotOpen = _selectedIndex == 1 && _guidelinesAccepted && !hasVoted && isElectionActive && isVerified;
+            final scheduleState = ElectionScheduleHelper.evaluate(
+              electionConfigDoc: electionConfigData,
+              electionToggleDoc: electionToggleData,
+              currentTime: DateTime.now(),
+            );
 
-            return Scaffold(
-              backgroundColor: const Color(0xFFF1F5F9),
-              appBar: isBallotOpen ? null : AppBar(
-                backgroundColor: Colors.white, 
-                elevation: 1,
-                automaticallyImplyLeading: false, 
-                title: Row(
-                  children: [
-                    Image.asset('assets/democrasync-logo1.png', width: 35, height: 35, fit: BoxFit.contain),
-                    const SizedBox(width: 12),
-                    Text(_getAppBarTitle(), style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
-                  ],
-                ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Center(
-                      child: RealTimeClock(
-                        backgroundColor: nemsuBackground,
-                        textColor: nemsuBlue,
-                        iconColor: nemsuGold,
-                        borderColor: nemsuGold.withValues(alpha: 0.35),
-                        fontSize: 11,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            return StreamBuilder<DocumentSnapshot>(
+              stream: _voterStream,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const Scaffold(body: Center(child: CircularProgressIndicator(color: nemsuBlue)));
+                }
+                
+                var data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+                bool isVerified = data['status'] == 'Verified';
+                bool hasVoted = data['hasVoted'] ?? false;
+
+                // Only hide the nav bar if the ballot is genuinely open
+                bool isBallotOpen = _selectedIndex == 1 && _guidelinesAccepted && !hasVoted && scheduleState.canVote && isVerified;
+
+                return Scaffold(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  appBar: isBallotOpen ? null : AppBar(
+                    backgroundColor: Colors.white, 
+                    elevation: 1,
+                    automaticallyImplyLeading: false, 
+                    title: Row(
+                      children: [
+                        Image.asset('assets/democrasync-logo1.png', width: 35, height: 35, fit: BoxFit.contain),
+                        const SizedBox(width: 12),
+                        Text(_getAppBarTitle(), style: const TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
+                      ],
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        child: Center(
+                          child: RealTimeClock(
+                            backgroundColor: nemsuBackground,
+                            textColor: nemsuBlue,
+                            iconColor: nemsuGold,
+                            borderColor: nemsuGold.withValues(alpha: 0.35),
+                            fontSize: 11,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          ),
+                        ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                        tooltip: 'Logout',
+                        onPressed: () => showLogoutConfirmationDialog(context),
+                      ),
+                    ],
+                  ),
+                  
+                  body: _buildDynamicBody(isVerified, hasVoted, scheduleState),
+
+                  bottomNavigationBar: isBallotOpen ? null : Container(
+                    decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -2))]),
+                    child: BottomNavigationBar(
+                      currentIndex: _selectedIndex,
+                      onTap: _onTabChanged,
+                      backgroundColor: Colors.white,
+                      selectedItemColor: nemsuBlue,
+                      unselectedItemColor: Colors.grey.shade600,
+                      type: BottomNavigationBarType.fixed,
+                      items: const [
+                        BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: 'Home'),
+                        BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), activeIcon: Icon(Icons.how_to_vote_rounded), label: 'Ballot'),
+                        BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                    tooltip: 'Logout',
-                    onPressed: () => showLogoutConfirmationDialog(context),
-                  ),
-                ],
-              ),
-              
-              body: _buildDynamicBody(isVerified, hasVoted, isElectionActive),
-
-              bottomNavigationBar: isBallotOpen ? null : Container(
-                decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))]),
-                child: BottomNavigationBar(
-                  currentIndex: _selectedIndex,
-                  onTap: (index) => setState(() => _selectedIndex = index),
-                  backgroundColor: Colors.white,
-                  selectedItemColor: nemsuBlue,
-                  unselectedItemColor: Colors.grey.shade600,
-                  type: BottomNavigationBarType.fixed,
-                  items: const [
-                    BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard_rounded), label: 'Home'),
-                    BottomNavigationBarItem(icon: Icon(Icons.how_to_vote_outlined), activeIcon: Icon(Icons.how_to_vote_rounded), label: 'Ballot'),
-                    BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), activeIcon: Icon(Icons.person_rounded), label: 'Profile'),
-                  ],
-                ),
-              ),
+                );
+              },
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 }

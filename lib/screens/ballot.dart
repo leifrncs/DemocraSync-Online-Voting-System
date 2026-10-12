@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
+import '../utils/election_schedule_helper.dart';
 import 'candidate_profile.dart';
 
 class BallotScreen extends StatefulWidget {
@@ -171,6 +172,32 @@ class _BallotScreenState extends State<BallotScreen> {
                 Navigator.pop(context);
 
                 try {
+                  // 👉 Verification Guard: Validate schedule and active switch before committing vote
+                  final toggleDoc = await FirebaseFirestore.instance.collection('settings').doc('election').get();
+                  final configDoc = await FirebaseFirestore.instance.collection('config').doc('election_settings').get();
+
+                  final scheduleState = ElectionScheduleHelper.evaluate(
+                    electionConfigDoc: configDoc.data(),
+                    electionToggleDoc: toggleDoc.data(),
+                    currentTime: DateTime.now(),
+                  );
+
+                  if (!scheduleState.canVote) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Voting is locked: ${scheduleState.statusHeadline}. Your vote was not recorded.',
+                          ),
+                          backgroundColor: Colors.redAccent,
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                      widget.onBack();
+                    }
+                    return;
+                  }
+
                   // 👉 2. THE TALLY COUNT
                   for (var entry in _selectedCandidates.entries) {
                     String candidateName = entry.value;
@@ -204,6 +231,11 @@ class _BallotScreenState extends State<BallotScreen> {
 
                 } catch (e) {
                   print('Submission Error: $e');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Submission Error: $e'), backgroundColor: Colors.redAccent),
+                    );
+                  }
                 }
               },
               child: const Text('SUBMIT FINAL VOTE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -296,14 +328,14 @@ class _BallotScreenState extends State<BallotScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? nemsuBlue.withOpacity(0.08) : Colors.white,
+          color: isSelected ? nemsuBlue.withValues(alpha: 0.08) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected ? nemsuBlue : Colors.grey.shade200, 
             width: isSelected ? 2 : 1
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
           ],
         ),
         child: Row(
