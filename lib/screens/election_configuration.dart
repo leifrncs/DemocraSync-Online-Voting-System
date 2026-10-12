@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import '../services/ai_ocr_service.dart';
+import '../widgets/batch_ai_scan_dialog.dart';
 
 class ElectionConfiguration extends StatefulWidget {
   const ElectionConfiguration({super.key});
@@ -32,6 +33,8 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
   String _selectedAcademicYear = '2026-2027';
   String _selectedSemester = '1st Semester';
   bool _enforceTermVerification = true;
+  String _initialAcademicYear = '2026-2027';
+  String _initialSemester = '1st Semester';
 
   final List<String> _academicYearOptions = [
     '2024-2025',
@@ -148,6 +151,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 _academicYearOptions.insert(0, ay);
               }
               _selectedAcademicYear = ay;
+              _initialAcademicYear = ay;
             }
           }
           if (data.containsKey('semester') && data['semester'] != null) {
@@ -157,6 +161,7 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 _semesterOptions.insert(0, sem);
               }
               _selectedSemester = sem;
+              _initialSemester = sem;
             }
           }
           if (data.containsKey('enforceTermVerification')) {
@@ -245,6 +250,83 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
 
   // --- FIREBASE: SAVE CONFIGURATION ---
   Future<void> _saveConfiguration() async {
+    final bool periodChanged = (_selectedAcademicYear != _initialAcademicYear) ||
+        (_selectedSemester != _initialSemester);
+
+    bool? runAutoScan;
+    if (periodChanged) {
+      runAutoScan = await showDialog<bool?>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, color: nemsuBlue, size: 22),
+              SizedBox(width: 8),
+              Text('Academic Period Updated',
+                  style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You are changing the active election period from $_initialAcademicYear ($_initialSemester) to $_selectedAcademicYear ($_selectedSemester).\n\nWould you like DemocraSync AI to automatically scan and verify all registered voters against this new term now?',
+                style: const TextStyle(fontSize: 14, height: 1.45),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Voters with outdated CORs will require document renewal to regain voting access.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Save Only', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: nemsuBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+              label: const Text('Save & Scan All Voters', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (runAutoScan == null) {
+        return; // Cancelled
+      }
+    }
+
     setState(() => _isSaving = true);
     try {
       DateTime? combinedStart;
@@ -273,11 +355,15 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
 
       await AiOcrService().saveApiKey(_apiKeyController.text.trim(), modelName: _activeModelName);
 
+      _initialAcademicYear = _selectedAcademicYear;
+      _initialSemester = _selectedSemester;
+
       if (!mounted) return;
       setState(() {
         positionRules = deduplicated;
         _isSaving = false;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -291,11 +377,66 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
           behavior: SnackBarBehavior.floating,
         ),
       );
+
+      if (runAutoScan == true && mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => BatchAiScanningDialog(
+            targetAcademicYear: _selectedAcademicYear,
+            targetSemester: _selectedSemester,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving settings: $e'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  Future<void> _triggerBatchVoterScan() async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded, color: nemsuBlue, size: 22),
+            SizedBox(width: 8),
+            Text('Scan Registered Voters?', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'DemocraSync AI will analyze all registered voters against Academic Year $_selectedAcademicYear ($_selectedSemester).\n\nVoters with matching CORs will be verified, while those with outdated documents will require COR renewal.\n\nProceed with AI verification?',
+          style: const TextStyle(fontSize: 14, height: 1.45),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: nemsuBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+            label: const Text('Start Batch Scan', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => BatchAiScanningDialog(
+          targetAcademicYear: _selectedAcademicYear,
+          targetSemester: _selectedSemester,
+        ),
       );
     }
   }
@@ -1068,6 +1209,18 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: nemsuBlue,
+              side: const BorderSide(color: nemsuBlue),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: _triggerBatchVoterScan,
+            icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+            label: const Text('Batch Verify Registered Voters Now', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ],
       ),

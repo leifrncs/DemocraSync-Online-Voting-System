@@ -7,11 +7,14 @@ class DashboardScreen extends StatelessWidget {
   final VoidCallback onNavigateToBallot;
   final VoidCallback? onViewVotes;
   final VoidCallback? onStatusChanged;
+  final VoidCallback? onNavigateToProfile;
 
   final String studentName; 
   final String studentDept;
   final bool hasVoted;
   final bool isElectionActive;
+  final bool isVerified;
+  final String? verificationStatus;
   final ElectionScheduleState? scheduleState;
 
   const DashboardScreen({
@@ -19,10 +22,13 @@ class DashboardScreen extends StatelessWidget {
     required this.onNavigateToBallot,
     this.onViewVotes,
     this.onStatusChanged,
+    this.onNavigateToProfile,
     required this.studentName, 
     required this.studentDept,
     required this.hasVoted,
     required this.isElectionActive,
+    this.isVerified = true,
+    this.verificationStatus,
     this.scheduleState,
   });
 
@@ -50,6 +56,67 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // COR Renewal Required Banner
+                    if (!isVerified && !hasVoted) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFCD34D)),
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF3C7),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.assignment_late_rounded, color: Color(0xFFD97706), size: 28),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'COR Renewal Required for Active Term',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF92400E),
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'The academic period has been updated. Please upload your updated Certificate of Registration (COR) to regain voting eligibility.',
+                                    style: TextStyle(fontSize: 12.5, color: Color(0xFFB45309), height: 1.3),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            if (onNavigateToProfile != null)
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD97706),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                onPressed: onNavigateToProfile,
+                                icon: const Icon(Icons.upload_file_rounded, size: 16),
+                                label: const Text('Update COR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Welcome Card
                     Container(
                       width: double.infinity,

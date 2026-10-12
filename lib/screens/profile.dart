@@ -415,33 +415,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildReadOnlyRow(Icons.layers_outlined, 'Year Level', yearLevel),
                           const Divider(height: 1, indent: 50),
                           
-                          // 👉 NEW: COR Viewer & Uploader
+                          // 👉 COR Viewer & Uploader
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             child: Row(
                               children: [
                                 const Icon(Icons.file_present_rounded, color: nemsuBlue, size: 22),
                                 const SizedBox(width: 16),
-                                const Expanded(
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Certificate of Registration', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
-                                      SizedBox(height: 2),
-                                      Text('Enrollment Proof', style: TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600)),
+                                      const Text('Certificate of Registration', style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        enrollmentStatus == 'Verified' ? 'Enrollment Proof Verified' : 'COR Renewal Required',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: enrollmentStatus == 'Verified' ? Colors.black87 : Colors.orange.shade800,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: () => _viewCOR(corBase64), 
-                                  child: const Text('View', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue))
+                                  child: const Text('View', style: TextStyle(fontWeight: FontWeight.bold, color: nemsuBlue)),
                                 ),
-                                // Only show update button if they are not verified
-                                if (enrollmentStatus != 'Verified')
-                                  TextButton(
-                                    onPressed: _updateCOR, 
-                                    child: const Text('Update', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange))
+                                TextButton.icon(
+                                  onPressed: _updateCOR, 
+                                  icon: const Icon(Icons.upload_file_rounded, size: 16, color: Colors.orange),
+                                  label: Text(
+                                    enrollmentStatus != 'Verified' ? 'Update COR' : 'Renew COR',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
                                   ),
+                                ),
                               ],
                             ),
                           ),

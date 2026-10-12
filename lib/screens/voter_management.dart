@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import '../constants.dart';
 import '../services/ai_ocr_service.dart';
+import '../widgets/batch_ai_scan_dialog.dart';
 
 class VoterManagement extends StatefulWidget {
   const VoterManagement({super.key});
@@ -57,6 +58,55 @@ class _VoterManagementState extends State<VoterManagement> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openBatchAiVerification() async {
+    final period = await AiOcrService().getActiveAcademicPeriod();
+    final String activeAy = period['academicYear'] ?? '2026-2027';
+    final String activeSem = period['semester'] ?? '1st Semester';
+
+    if (!mounted) return;
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome_rounded, color: nemsuBlue, size: 22),
+            SizedBox(width: 8),
+            Text('Batch AI Verification', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'Run automated AI cross-verification for all registered voters against active Academic Period: $activeAy ($activeSem)?\n\nThis will re-verify uploaded CORs, flag outdated documents, and update voter eligibility.',
+          style: const TextStyle(fontSize: 14, height: 1.45),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: nemsuBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+            label: const Text('Run Batch Scan', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => BatchAiScanningDialog(
+          targetAcademicYear: activeAy,
+          targetSemester: activeSem,
+        ),
+      );
+    }
   }
 
   String _getScopeAbbreviation(String scope) {
@@ -1487,6 +1537,22 @@ class _VoterManagementState extends State<VoterManagement> {
                               ],
                             ),
                           ),
+                          // Batch AI Verification Button
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: nemsuBlue,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 12, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: _openBatchAiVerification,
+                            icon: const Icon(Icons.auto_awesome_rounded, size: 15, color: nemsuGold),
+                            label: Text(
+                              isMobile ? 'Batch AI' : 'Batch AI Verification',
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           // View Toggle Button Group
                           Container(
                             decoration: BoxDecoration(

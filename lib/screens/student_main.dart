@@ -94,12 +94,27 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
               child: Icon(Icons.lock_clock_rounded, size: 80, color: Colors.orange.shade400),
             ),
             const SizedBox(height: 24),
-            const Text('Verification Pending', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
+            const Text('Verification Pending / Outdated', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: nemsuBlue)),
             const SizedBox(height: 12),
             const Text(
-              'The COMSELEC is currently verifying your student records. Please wait for activation before accessing the ballot.',
+              'Your enrollment records require verification for the active academic period before accessing the ballot.',
               style: TextStyle(fontSize: 14, color: Colors.grey),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 46,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: nemsuBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => _onTabChanged(2),
+                icon: const Icon(Icons.upload_file_rounded, size: 18),
+                label: const Text('Update / Upload My COR', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
@@ -312,7 +327,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
     );
   }
 
-  Widget _buildDynamicBody(bool isVerified, bool hasVoted, ElectionScheduleState scheduleState) {
+  Widget _buildDynamicBody(bool isVerified, bool hasVoted, ElectionScheduleState scheduleState, String verificationStatus) {
     switch (_selectedIndex) {
       case 0: 
         return DashboardScreen(
@@ -320,10 +335,13 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
           studentDept: widget.studentDept,
           hasVoted: hasVoted, 
           isElectionActive: scheduleState.canVote,
+          isVerified: isVerified,
+          verificationStatus: verificationStatus,
           scheduleState: scheduleState,
           onStatusChanged: () {
             if (mounted) setState(() {});
           },
+          onNavigateToProfile: () => _onTabChanged(2),
           onViewVotes: () {
             showVotingReceiptDialog(
               context,
@@ -379,6 +397,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                 var data = snapshot.data?.data() as Map<String, dynamic>? ?? {};
                 bool isVerified = data['status'] == 'Verified';
                 bool hasVoted = data['hasVoted'] ?? false;
+                String verificationStatus = data['status'] ?? 'Pending Verification';
 
                 // Only hide the nav bar if the ballot is genuinely open
                 bool isBallotOpen = _selectedIndex == 1 && _guidelinesAccepted && !hasVoted && scheduleState.canVote && isVerified;
@@ -418,7 +437,7 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
                     ],
                   ),
                   
-                  body: _buildDynamicBody(isVerified, hasVoted, scheduleState),
+                  body: _buildDynamicBody(isVerified, hasVoted, scheduleState, verificationStatus),
 
                   bottomNavigationBar: isBallotOpen ? null : Container(
                     decoration: BoxDecoration(boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -2))]),
