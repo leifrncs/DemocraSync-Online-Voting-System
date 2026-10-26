@@ -35,6 +35,9 @@ class _CandidateManagementState extends State<CandidateManagement> {
   List<Map<String, dynamic>> _configuredPositions = [];
   List<String> _departmentsList = [];
   bool _isLoadingConfig = true;
+  String _activeAcademicYear = '2026-2027';
+  String _activeSemester = '1st Semester';
+  bool _isOutdatedBannerDismissed = false;
 
   // --- CANONICAL SCOPES & DEFAULTS ---
   static const List<String> _canonicalScopes = [
@@ -73,8 +76,16 @@ class _CandidateManagementState extends State<CandidateManagement> {
       DocumentSnapshot doc = await FirebaseFirestore.instance.collection('config').doc('election_settings').get();
 
       List<Map<String, dynamic>> loadedPositions = [];
+      String activeAY = '2026-2027';
+      String activeSem = '1st Semester';
       if (doc.exists && doc.data() != null) {
         var data = doc.data() as Map<String, dynamic>;
+        if (data.containsKey('academicYear') && data['academicYear'] != null) {
+          activeAY = data['academicYear'].toString().trim();
+        }
+        if (data.containsKey('semester') && data['semester'] != null) {
+          activeSem = data['semester'].toString().trim();
+        }
         if (data.containsKey('positions') && data['positions'] is List) {
           loadedPositions = List<Map<String, dynamic>>.from(data['positions']);
         }
@@ -116,6 +127,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
 
       if (mounted) {
         setState(() {
+          _activeAcademicYear = activeAY;
+          _activeSemester = activeSem;
           _configuredPositions = loadedPositions;
           _departmentsList = depts.toList();
           _isLoadingConfig = false;
@@ -511,6 +524,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                     'position': formPos,
                                     'party': candidateParty,
                                     'platform': candidatePlatform,
+                                    'academicYear': isEdit ? (existingCandidate!['academicYear'] ?? _activeAcademicYear) : _activeAcademicYear,
+                                    'semester': isEdit ? (existingCandidate!['semester'] ?? _activeSemester) : _activeSemester,
                                     'timestamp': isEdit && existingCandidate!['timestamp'] != null
                                         ? existingCandidate['timestamp']
                                         : FieldValue.serverTimestamp(),
@@ -964,6 +979,8 @@ class _CandidateManagementState extends State<CandidateManagement> {
                         String party = candidate['party'] ?? 'Independent';
                         String platform = candidate['platform'] ?? 'No platform statement submitted.';
                         bool isIndependent = party.toLowerCase().contains('independent');
+                        String? candAY = candidate['academicYear']?.toString().trim();
+                        bool isOutdatedAY = candAY == null || candAY.isEmpty || candAY != _activeAcademicYear.trim();
 
                         return DataRow(
                           cells: [
@@ -983,10 +1000,30 @@ class _CandidateManagementState extends State<CandidateManagement> {
                                   const SizedBox(width: 12),
                                   ConstrainedBox(
                                     constraints: const BoxConstraints(maxWidth: 180),
-                                    child: Text(
-                                      name,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5, color: nemsuBlue),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (isOutdatedAY)
+                                          Container(
+                                            margin: const EdgeInsets.only(top: 2),
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFEF3C7),
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(color: const Color(0xFFFCD34D), width: 0.8),
+                                            ),
+                                            child: Text(
+                                              'Outdated AY (${candAY ?? "Prior"})',
+                                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -1238,6 +1275,19 @@ class _CandidateManagementState extends State<CandidateManagement> {
                           spacing: 5,
                           runSpacing: 4,
                           children: [
+                            if (candidate['academicYear']?.toString().trim() != _activeAcademicYear.trim())
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF3C7),
+                                  borderRadius: BorderRadius.circular(5),
+                                  border: Border.all(color: const Color(0xFFFCD34D), width: 0.8),
+                                ),
+                                child: Text(
+                                  'Outdated AY (${candidate['academicYear'] ?? "Prior"})',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309)),
+                                ),
+                              ),
                             // Position Tag
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
@@ -1745,6 +1795,13 @@ class _CandidateManagementState extends State<CandidateManagement> {
                 ),
                 const Divider(height: 1, color: Color(0xFFE2E8F0)),
 
+                // --- OUTDATED CANDIDATES BANNER ---
+                if (allDocs.any((d) => (d.data() as Map<String, dynamic>)['academicYear']?.toString().trim() != _activeAcademicYear.trim()) && !_isOutdatedBannerDismissed)
+                  _buildOutdatedCandidatesBanner(
+                    allDocs.where((d) => (d.data() as Map<String, dynamic>)['academicYear']?.toString().trim() != _activeAcademicYear.trim()).toList(),
+                    context,
+                  ),
+
                 // --- INTEGRATED TOOLBAR: SEARCH & SCOPE & POSITION & SORT FILTERS ---
                 Container(
                   width: double.infinity,
@@ -2115,5 +2172,177 @@ class _CandidateManagementState extends State<CandidateManagement> {
         ),
       ),
     );
+  }
+
+  Widget _buildOutdatedCandidatesBanner(List<QueryDocumentSnapshot> outdatedDocs, BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFCD34D), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFD97706).withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF3C7),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFFCD34D)),
+            ),
+            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309), size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Prior Academic Year Candidates Detected',
+                      style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB45309),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${outdatedDocs.length} Outdated',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'The candidates listed below were registered for previous academic year(s). The current active election period is $_activeAcademicYear ($_activeSemester). You can archive outdated candidates to keep ballots clean or retain them for reference.',
+                  style: const TextStyle(fontSize: 12.5, color: Color(0xFF78350F), height: 1.4),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 6,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFB45309),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      onPressed: () => _archiveAndClearOldCandidates(outdatedDocs),
+                      icon: const Icon(Icons.archive_outlined, size: 15),
+                      label: const Text('Archive / Clear Old Candidates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    ),
+                    OutlinedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: const Color(0xFF92400E),
+                        side: const BorderSide(color: Color(0xFFFCD34D)),
+                        backgroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      onPressed: () => setState(() => _isOutdatedBannerDismissed = true),
+                      icon: const Icon(Icons.visibility_off_outlined, size: 15),
+                      label: const Text('Keep for Reference', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: Color(0xFF92400E)),
+            tooltip: 'Dismiss Warning',
+            onPressed: () => setState(() => _isOutdatedBannerDismissed = true),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _archiveAndClearOldCandidates(List<QueryDocumentSnapshot> outdatedDocs) async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.archive_outlined, color: Color(0xFFB45309), size: 24),
+            SizedBox(width: 8),
+            Text('Archive Outdated Candidates?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+          ],
+        ),
+        content: Text(
+          'This will move ${outdatedDocs.length} candidates from previous academic year(s) into archived_candidates and remove them from the active election list.\n\nAre you sure you want to proceed?',
+          style: const TextStyle(fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFB45309), foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Archive & Clear', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      for (var doc in outdatedDocs) {
+        var data = doc.data() as Map<String, dynamic>;
+        var archiveRef = FirebaseFirestore.instance.collection('archived_candidates').doc(doc.id);
+        batch.set(archiveRef, {
+          ...data,
+          'archivedAt': FieldValue.serverTimestamp(),
+          'archivedReason': 'Academic Period Rollover Clean',
+        });
+        batch.delete(doc.reference);
+      }
+
+      await batch.commit();
+
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'action': 'Prior AY Candidates Archived & Cleared',
+        'user': 'admin',
+        'type': 'Candidate Management',
+        'details': {'count': outdatedDocs.length, 'targetPeriod': _activeAcademicYear},
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${outdatedDocs.length} outdated candidate(s) safely archived!'),
+            backgroundColor: const Color(0xFF10B981),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error archiving candidates: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
   }
 }

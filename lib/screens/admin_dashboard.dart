@@ -26,6 +26,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   bool _isSidebarVisible = true; 
   int _selectedIndex = 0; 
 
+  String _selectedReportCycle = 'LIVE';
+  Map<String, dynamic>? _selectedArchiveData;
+
   String _selectedTallyScope = 'University-Wide (USG)';
   
   final List<String> _tallyScopes = [
@@ -50,25 +53,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   Future<void> _generateAndDownloadPDF() async {
     try {
-      var votersSnap = await FirebaseFirestore.instance.collection('voters').get();
-      var candidatesSnap = await FirebaseFirestore.instance.collection('candidates').get();
-      var votesSnap = await FirebaseFirestore.instance.collection('votes').get();
-
-      final votersList = votersSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
-      final votesList = votesSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
-
-      final kpiMetrics = AdminKpiHelper.calculate(voters: votersList, votes: votesList);
-      int totalVoters = kpiMetrics.registeredVoters;
-      int totalVotes = kpiMetrics.totalVotes;
-      double turnout = kpiMetrics.turnoutPercentage * 100;
-
-      // Group candidates by Department / Scope, then by Position
+      int totalVoters;
+      int totalVotes;
+      double turnout;
       Map<String, Map<String, List<Map<String, dynamic>>>> groupedByScope = {};
-      for (var doc in candidatesSnap.docs) {
-        var data = doc.data();
-        String dept = data['department'] ?? 'University-Wide (USG)';
-        String position = data['position'] ?? 'Unknown Position';
-        groupedByScope.putIfAbsent(dept, () => {}).putIfAbsent(position, () => []).add(data);
+      String reportPeriodLabel;
+
+      if (_selectedReportCycle != 'LIVE' && _selectedArchiveData != null) {
+        totalVoters = (_selectedArchiveData!['registeredVoters'] as num?)?.toInt() ?? 0;
+        totalVotes = (_selectedArchiveData!['totalVotes'] as num?)?.toInt() ?? 0;
+        turnout = ((_selectedArchiveData!['turnoutPercentage'] as num?)?.toDouble() ?? 0.0) * 100;
+        reportPeriodLabel = 'Official Concluded Tally - A.Y. ${_selectedArchiveData!["academicYear"]} (${_selectedArchiveData!["semester"]})';
+
+        List<dynamic> candResults = _selectedArchiveData!['candidateResults'] ?? [];
+        for (var c in candResults) {
+          if (c is Map) {
+            String dept = c['department']?.toString() ?? 'University-Wide (USG)';
+            String position = c['position']?.toString() ?? 'Unknown Position';
+            groupedByScope.putIfAbsent(dept, () => {}).putIfAbsent(position, () => []).add(Map<String, dynamic>.from(c));
+          }
+        }
+      } else {
+        var votersSnap = await FirebaseFirestore.instance.collection('voters').get();
+        var candidatesSnap = await FirebaseFirestore.instance.collection('candidates').get();
+        var votesSnap = await FirebaseFirestore.instance.collection('votes').get();
+
+        final votersList = votersSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+        final votesList = votesSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+
+        final kpiMetrics = AdminKpiHelper.calculate(voters: votersList, votes: votesList);
+        totalVoters = kpiMetrics.registeredVoters;
+        totalVotes = kpiMetrics.totalVotes;
+        turnout = kpiMetrics.turnoutPercentage * 100;
+        reportPeriodLabel = 'Official Live Student Election Tally';
+
+        for (var doc in candidatesSnap.docs) {
+          var data = doc.data();
+          String dept = data['department'] ?? 'University-Wide (USG)';
+          String position = data['position'] ?? 'Unknown Position';
+          groupedByScope.putIfAbsent(dept, () => {}).putIfAbsent(position, () => []).add(data);
+        }
       }
       
       groupedByScope.forEach((dept, posMap) {
@@ -212,7 +236,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             return [
               pw.Center(
                 child: pw.Text(
-                  'DemocraSync- Official Student Election Tally',
+                  'DemocraSync - $reportPeriodLabel',
                   style: pw.TextStyle(
                     fontSize: 12,
                     fontWeight: pw.FontWeight.bold,
@@ -319,7 +343,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       );
 
-      await Printing.sharePdf(bytes: await pdf.save(), filename: 'DemocraSync_Official_Results.pdf');
+      String cycleTag = _selectedReportCycle == 'LIVE' ? 'Live_Current' : (_selectedArchiveData?['academicYear']?.toString().replaceAll('/', '-') ?? 'Archived');
+      await Printing.sharePdf(bytes: await pdf.save(), filename: 'DemocraSync_${cycleTag}_Results.pdf');
 
       // Write to Audit Logs
       await FirebaseFirestore.instance.collection('audit_logs').add({
@@ -330,7 +355,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'type': 'System Export',
         'details': {
           'Target': 'System Generation',
-          'Payload': 'File: DemocraSync_Official_Results.pdf',
+          'Cycle': _selectedReportCycle,
+          'Payload': 'File: DemocraSync_${cycleTag}_Results.pdf',
         },
       });
 
@@ -598,376 +624,577 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildDashboardContent(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('voters').snapshots(),
-      builder: (context, votersSnapshot) {
-        return StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection('candidates').snapshots(),
-          builder: (context, candidatesSnapshot) {
-            return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('votes').snapshots(),
-              builder: (context, votesSnapshot) {
-                if (votersSnapshot.connectionState == ConnectionState.waiting ||
-                    candidatesSnapshot.connectionState == ConnectionState.waiting ||
-                    votesSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: nemsuBlue));
-                }
-
-                final votersDocs = votersSnapshot.data?.docs ?? [];
-                final candidates = candidatesSnapshot.data?.docs ?? [];
-                final votesDocs = votesSnapshot.data?.docs ?? [];
-
-                final votersList = votersDocs
-                    .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
-                    .toList();
-                final votesList = votesDocs
-                    .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
-                    .toList();
-
-                final kpiMetrics = AdminKpiHelper.calculate(
-                  voters: votersList,
-                  votes: votesList,
-                );
-
-                final int registeredVoters = kpiMetrics.registeredVoters;
-                final int verifiedVoters = kpiMetrics.verifiedVoters;
-                final int pendingVerifications = kpiMetrics.pendingVerifications;
-                final int totalVotes = kpiMetrics.totalVotes;
-                final double turnoutPercentage = kpiMetrics.turnoutPercentage;
-                final Map<String, int> deptTurnout = kpiMetrics.deptTurnout;
-
-                Map<String, int> chartPositionVotes = {};
-                Map<String, List<Map<String, dynamic>>> scopedCandidates = {};
-
-                for (var doc in candidates) {
-                  var data = doc.data() as Map<String, dynamic>;
-                  
-                  String position = data['position']?.toString() ?? 'Unknown';
-                  String dept = data['department']?.toString() ?? '';
-                  int votes = (data['voteCount'] as num?)?.toInt() ?? 0;
-                  
-                  chartPositionVotes[position] = (chartPositionVotes[position] ?? 0) + votes;
-
-                  if (dept == _selectedTallyScope) {
-                    scopedCandidates.putIfAbsent(position, () => []).add(data);
-                  }
-                }
-
-                scopedCandidates.forEach((key, list) {
-                  list.sort((a, b) {
-                    int bVotes = (b['voteCount'] as num?)?.toInt() ?? 0;
-                    int aVotes = (a['voteCount'] as num?)?.toInt() ?? 0;
-                    return bVotes.compareTo(aVotes);
-                  });
-                });
-
-                double screenWidth = MediaQuery.of(context).size.width;
-
-                Widget card1 = _buildKPICard(
-                  Icons.how_to_reg_rounded,
-                  'Registered Voters',
-                  registeredVoters.toString(),
-                  nemsuBlue,
-                  'Total registered student accounts in DemocraSync ($verifiedVoters verified & eligible to vote).',
-                );
-                Widget card2 = _buildKPICard(
-                  Icons.how_to_vote_rounded,
-                  'Total Votes Cast',
-                  totalVotes.toString(),
-                  const Color(0xFF7C3AED),
-                  'Total official ballots submitted and verified across all colleges.',
-                );
-                Widget card3 = _buildTurnoutCard(
-                  turnoutPercentage,
-                  description: 'Turnout: ${(turnoutPercentage * 100).toStringAsFixed(1)}% of $verifiedVoters verified eligible voters.',
-                );
-                Widget card4 = _buildKPICard(
-                  Icons.pending_actions_rounded,
-                  'Pending Verifications',
-                  pendingVerifications.toString(),
-                  const Color(0xFFE11D48),
-                  'Student accounts awaiting enrollment or COR document verification.',
-                );
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildReportCycleSwitcher(String activeAY, String activeSem, List<QueryDocumentSnapshot> archiveDocs) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 340),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _selectedReportCycle == 'LIVE' ? const Color(0xFFCBD5E1) : const Color(0xFFFCD34D),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedReportCycle,
+          icon: const Icon(Icons.swap_horiz_rounded, size: 18, color: nemsuBlue),
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+          items: [
+            DropdownMenuItem(
+              value: 'LIVE',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // --- SECTION HEADER ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Election Overview',
-                                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Real-time voter turnout and candidate tally statistics',
-                            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // --- KPI METRIC CARDS ---
-                  if (screenWidth > 900)
-                    IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(child: card1), const SizedBox(width: 14),
-                          Expanded(child: card2), const SizedBox(width: 14),
-                          Expanded(child: card3), const SizedBox(width: 14),
-                          Expanded(child: card4),
-                        ],
-                      ),
-                    )
-                  else
-                    Column(
-                      children: [
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(child: card1), const SizedBox(width: 10),
-                              Expanded(child: card2),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(child: card3), const SizedBox(width: 10),
-                              Expanded(child: card4),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 18),
-
-                  // --- CHARTS SECTION (COMPACT & BEAUTIFUL) ---
-                  if (screenWidth > 850) 
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: _buildPieChartCard(deptTurnout, totalVotes, screenWidth)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildBarChartCard(chartPositionVotes)),
-                      ],
-                    )
-                  else ...[
-                    _buildPieChartCard(deptTurnout, totalVotes, screenWidth),
-                    const SizedBox(height: 16),
-                    _buildBarChartCard(chartPositionVotes),
-                  ],
-                  
-                  const SizedBox(height: 18),
-
-                  // --- LIVE TALLY BOARD ---
                   Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: nemsuBlue.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.leaderboard_rounded, color: nemsuBlue, size: 18),
-                                ),
-                                const SizedBox(width: 10),
-                                const Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Live Tally Board', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: nemsuBlue)),
-                                    Text('Select scope to inspect candidate standings', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Container(
-                              constraints: const BoxConstraints(maxWidth: 320), 
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFCBD5E1)),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  value: _selectedTallyScope,
-                                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: nemsuBlue),
-                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: nemsuBlue),
-                                  items: _tallyScopes.map<DropdownMenuItem<String>>((String scope) {
-                                    return DropdownMenuItem<String>(
-                                      value: scope,
-                                      child: Text(scope, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    if (val != null) setState(() => _selectedTallyScope = val);
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        const Divider(height: 1, color: Color(0xFFE2E8F0), thickness: 1),
-                        const SizedBox(height: 12),
-
-                        if (scopedCandidates.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 36.0),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(Icons.inbox_outlined, size: 40, color: Colors.grey.shade400),
-                                  const SizedBox(height: 8),
-                                  Text("No candidates registered for $_selectedTallyScope", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          for (var entry in (scopedCandidates.entries.toList()
-                            ..sort((a, b) {
-                              const dashHierarchy = [
-                                'President',
-                                'Vice President for Internal Affairs',
-                                'Vice President for External Affairs',
-                                'Vice President',
-                                'Executive Secretary',
-                                'Treasurer',
-                                'Auditor',
-                                'Senator',
-                                'Governor',
-                                'Vice Governor',
-                                'Secretary',
-                                'Treasurer',
-                                'College Auditor',
-                                'Public Information Officer',
-                                'Business Manager',
-                                'Sargeant at Arms',
-                                'Program/Year Level Rep',
-                                'Representative',
-                              ];
-                              int indexA = dashHierarchy.indexOf(a.key);
-                              int indexB = dashHierarchy.indexOf(b.key);
-                              if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
-                              if (indexA != -1) return -1;
-                              if (indexB != -1) return 1;
-                              return a.key.compareTo(b.key);
-                            })))
-                            Builder(
-                              builder: (context) {
-                                int totalPosVotes = entry.value.fold(0, (sum, item) => sum + ((item['voteCount'] as num?)?.toInt() ?? 0));
-                                int topVotes = entry.value.isNotEmpty ? ((entry.value.first['voteCount'] as num?)?.toInt() ?? 0) : 0;
-                                
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 14.0, bottom: 8.0),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 4,
-                                            height: 14,
-                                            decoration: BoxDecoration(
-                                              color: nemsuGold,
-                                              borderRadius: BorderRadius.circular(2),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            entry.key.toUpperCase(),
-                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: 0.5),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Text(
-                                              '$totalPosVotes total votes',
-                                              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    for (var candidate in entry.value)
-                                      Builder(
-                                        builder: (context) {
-                                          String name = candidate['name']?.toString() ?? 'Unknown';
-                                          String party = candidate['party']?.toString() ?? 'Independent';
-                                          int cVotes = (candidate['voteCount'] as num?)?.toInt() ?? 0;
-                                          double pct = totalPosVotes > 0 ? cVotes / totalPosVotes : 0.0;
-                                          bool isLeading = topVotes > 0 && cVotes == topVotes;
-                                          
-                                          return _buildTallyRow(name, party, cVotes, pct, isLeading);
-                                        }
-                                      )
-                                  ],
-                                );
-                              }
-                            )
-                      ],
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Live: A.Y. $activeAY ($activeSem)',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: nemsuBlue),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
+            ),
+            ...archiveDocs.map((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              String ay = data['academicYear'] ?? 'Prior AY';
+              String sem = data['semester'] ?? 'Term';
+              return DropdownMenuItem(
+                value: doc.id,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.history_rounded, size: 15, color: Color(0xFFD97706)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Archive: A.Y. $ay ($sem)',
+                        style: const TextStyle(color: Color(0xFF92400E), fontSize: 12.5, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _selectedReportCycle = val;
+              });
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('config').doc('election_settings').snapshots(),
+      builder: (context, configSnap) {
+        String activeAY = '2026-2027';
+        String activeSem = '1st Semester';
+        if (configSnap.hasData && configSnap.data!.exists) {
+          var cData = configSnap.data!.data() as Map<String, dynamic>?;
+          if (cData != null) {
+            activeAY = cData['academicYear']?.toString() ?? activeAY;
+            activeSem = cData['semester']?.toString() ?? activeSem;
+          }
+        }
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('election_archives').orderBy('archivedAt', descending: true).snapshots(),
+          builder: (context, archivesSnap) {
+            final List<QueryDocumentSnapshot> archiveDocs = archivesSnap.data?.docs ?? [];
+
+            // If an archive is selected, find it
+            QueryDocumentSnapshot? matchingArchive;
+            if (_selectedReportCycle != 'LIVE') {
+              for (var doc in archiveDocs) {
+                if (doc.id == _selectedReportCycle) {
+                  matchingArchive = doc;
+                  break;
+                }
+              }
+              if (matchingArchive != null) {
+                _selectedArchiveData = matchingArchive.data() as Map<String, dynamic>;
+              } else {
+                _selectedReportCycle = 'LIVE';
+                _selectedArchiveData = null;
+              }
+            } else {
+              _selectedArchiveData = null;
+            }
+
+            final bool isArchived = _selectedReportCycle != 'LIVE' && _selectedArchiveData != null;
+
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('voters').snapshots(),
+              builder: (context, votersSnapshot) {
+                return StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance.collection('candidates').snapshots(),
+                  builder: (context, candidatesSnapshot) {
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance.collection('votes').snapshots(),
+                      builder: (context, votesSnapshot) {
+                        if (votersSnapshot.connectionState == ConnectionState.waiting ||
+                            candidatesSnapshot.connectionState == ConnectionState.waiting ||
+                            votesSnapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: nemsuBlue));
+                        }
+
+                        final votersDocs = votersSnapshot.data?.docs ?? [];
+                        final candidates = candidatesSnapshot.data?.docs ?? [];
+                        final votesDocs = votesSnapshot.data?.docs ?? [];
+
+                        final votersList = votersDocs
+                            .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
+                            .toList();
+                        final votesList = votesDocs
+                            .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
+                            .toList();
+
+                        final kpiMetrics = AdminKpiHelper.calculate(
+                          voters: votersList,
+                          votes: votesList,
+                        );
+
+                        int registeredVoters = kpiMetrics.registeredVoters;
+                        int verifiedVoters = kpiMetrics.verifiedVoters;
+                        int pendingVerifications = kpiMetrics.pendingVerifications;
+                        int totalVotes = kpiMetrics.totalVotes;
+                        double turnoutPercentage = kpiMetrics.turnoutPercentage;
+                        Map<String, int> deptTurnout = kpiMetrics.deptTurnout;
+
+                        Map<String, int> chartPositionVotes = {};
+                        Map<String, List<Map<String, dynamic>>> scopedCandidates = {};
+
+                        if (isArchived) {
+                          var aData = _selectedArchiveData!;
+                          registeredVoters = (aData['registeredVoters'] as num?)?.toInt() ?? 0;
+                          verifiedVoters = (aData['verifiedVoters'] as num?)?.toInt() ?? 0;
+                          pendingVerifications = (aData['pendingVerifications'] as num?)?.toInt() ?? 0;
+                          totalVotes = (aData['totalVotes'] as num?)?.toInt() ?? 0;
+                          turnoutPercentage = (aData['turnoutPercentage'] as num?)?.toDouble() ?? 0.0;
+                          deptTurnout = Map<String, int>.from(aData['deptTurnout'] ?? {});
+
+                          List<dynamic> candResults = aData['candidateResults'] ?? [];
+                          for (var item in candResults) {
+                            if (item is Map) {
+                              var cMap = Map<String, dynamic>.from(item);
+                              String position = cMap['position']?.toString() ?? 'Unknown';
+                              String dept = cMap['department']?.toString() ?? '';
+                              int votes = (cMap['voteCount'] as num?)?.toInt() ?? 0;
+
+                              chartPositionVotes[position] = (chartPositionVotes[position] ?? 0) + votes;
+                              if (dept == _selectedTallyScope) {
+                                scopedCandidates.putIfAbsent(position, () => []).add(cMap);
+                              }
+                            }
+                          }
+                        } else {
+                          for (var doc in candidates) {
+                            var data = doc.data() as Map<String, dynamic>;
+                            String position = data['position']?.toString() ?? 'Unknown';
+                            String dept = data['department']?.toString() ?? '';
+                            int votes = (data['voteCount'] as num?)?.toInt() ?? 0;
+
+                            chartPositionVotes[position] = (chartPositionVotes[position] ?? 0) + votes;
+
+                            if (dept == _selectedTallyScope) {
+                              scopedCandidates.putIfAbsent(position, () => []).add(data);
+                            }
+                          }
+                        }
+
+                        scopedCandidates.forEach((key, list) {
+                          list.sort((a, b) {
+                            int bVotes = (b['voteCount'] as num?)?.toInt() ?? 0;
+                            int aVotes = (a['voteCount'] as num?)?.toInt() ?? 0;
+                            return bVotes.compareTo(aVotes);
+                          });
+                        });
+
+                        double screenWidth = MediaQuery.of(context).size.width;
+
+                        Widget card1 = _buildKPICard(
+                          Icons.how_to_reg_rounded,
+                          'Registered Voters',
+                          registeredVoters.toString(),
+                          nemsuBlue,
+                          'Total registered student accounts in DemocraSync ($verifiedVoters verified & eligible to vote).',
+                        );
+                        Widget card2 = _buildKPICard(
+                          Icons.how_to_vote_rounded,
+                          'Total Votes Cast',
+                          totalVotes.toString(),
+                          const Color(0xFF7C3AED),
+                          'Total official ballots submitted and verified across all colleges.',
+                        );
+                        Widget card3 = _buildTurnoutCard(
+                          turnoutPercentage,
+                          description: 'Turnout: ${(turnoutPercentage * 100).toStringAsFixed(1)}% of $verifiedVoters verified eligible voters.',
+                        );
+                        Widget card4 = _buildKPICard(
+                          Icons.pending_actions_rounded,
+                          'Pending Verifications',
+                          pendingVerifications.toString(),
+                          const Color(0xFFE11D48),
+                          'Student accounts awaiting enrollment or COR document verification.',
+                        );
+
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // --- SECTION HEADER ---
+                              Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 12,
+                                runSpacing: 10,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: isArchived ? const Color(0xFFD97706) : const Color(0xFF10B981),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isArchived ? 'Election Report Archive' : 'Election Overview',
+                                            style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: -0.3),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isArchived
+                                            ? 'Concluded Official Report • A.Y. ${_selectedArchiveData!["academicYear"]} (${_selectedArchiveData!["semester"]})'
+                                            : 'Active Term: A.Y. $activeAY ($activeSem) • Real-time voter turnout and candidate tally',
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                                      ),
+                                    ],
+                                  ),
+                                  _buildReportCycleSwitcher(activeAY, activeSem, archiveDocs),
+                                ],
+                              ),
+
+                              // --- ARCHIVE STATUS BANNER ---
+                              if (isArchived) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFFFCD34D)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.history_rounded, color: Color(0xFFB45309), size: 20),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Viewing Concluded Election Report for A.Y. ${_selectedArchiveData!["academicYear"]} (${_selectedArchiveData!["semester"]}). This is a historical snapshot. Live voting is active for A.Y. $activeAY ($activeSem).',
+                                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: nemsuBlue,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () => setState(() => _selectedReportCycle = 'LIVE'),
+                                        icon: const Icon(Icons.arrow_back_rounded, size: 14),
+                                        label: const Text('Return to Live Report', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+
+                              // --- KPI METRIC CARDS ---
+                              if (screenWidth > 900)
+                                IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(child: card1), const SizedBox(width: 14),
+                                      Expanded(child: card2), const SizedBox(width: 14),
+                                      Expanded(child: card3), const SizedBox(width: 14),
+                                      Expanded(child: card4),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Column(
+                                  children: [
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(child: card1), const SizedBox(width: 10),
+                                          Expanded(child: card2),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(child: card3), const SizedBox(width: 10),
+                                          Expanded(child: card4),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              const SizedBox(height: 18),
+
+                              // --- CHARTS SECTION (COMPACT & BEAUTIFUL) ---
+                              if (screenWidth > 850) 
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: _buildPieChartCard(deptTurnout, totalVotes, screenWidth)),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: _buildBarChartCard(chartPositionVotes)),
+                                  ],
+                                )
+                              else ...[
+                                _buildPieChartCard(deptTurnout, totalVotes, screenWidth),
+                                const SizedBox(height: 16),
+                                _buildBarChartCard(chartPositionVotes),
+                              ],
+                              
+                              const SizedBox(height: 18),
+
+                              // --- LIVE / CONCLUDED TALLY BOARD ---
+                              Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.03),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      alignment: WrapAlignment.spaceBetween,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      spacing: 12,
+                                      runSpacing: 12,
+                                      children: [
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: nemsuBlue.withValues(alpha: 0.08),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(Icons.leaderboard_rounded, color: nemsuBlue, size: 18),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  isArchived ? 'Concluded Tally Board' : 'Live Tally Board',
+                                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: nemsuBlue),
+                                                ),
+                                                Text(
+                                                  isArchived
+                                                      ? 'Final official candidate standings for A.Y. ${_selectedArchiveData!["academicYear"]} (${_selectedArchiveData!["semester"]})'
+                                                      : 'Select scope to inspect candidate standings',
+                                                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        Container(
+                                          constraints: const BoxConstraints(maxWidth: 320), 
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF8FAFC),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                                          ),
+                                          child: DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              isExpanded: true,
+                                              value: _selectedTallyScope,
+                                              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: nemsuBlue),
+                                              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: nemsuBlue),
+                                              items: _tallyScopes.map<DropdownMenuItem<String>>((String scope) {
+                                                return DropdownMenuItem<String>(
+                                                  value: scope,
+                                                  child: Text(scope, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                );
+                                              }).toList(),
+                                              onChanged: (val) {
+                                                if (val != null) setState(() => _selectedTallyScope = val);
+                                              },
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    const Divider(height: 1, color: Color(0xFFE2E8F0), thickness: 1),
+                                    const SizedBox(height: 12),
+
+                                    if (scopedCandidates.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 36.0),
+                                        child: Center(
+                                          child: Column(
+                                            children: [
+                                              Icon(Icons.inbox_outlined, size: 40, color: Colors.grey.shade400),
+                                              const SizedBox(height: 8),
+                                              Text("No candidates registered for $_selectedTallyScope", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      for (var entry in (scopedCandidates.entries.toList()
+                                        ..sort((a, b) {
+                                          const dashHierarchy = [
+                                            'President',
+                                            'Vice President for Internal Affairs',
+                                            'Vice President for External Affairs',
+                                            'Vice President',
+                                            'Executive Secretary',
+                                            'Treasurer',
+                                            'Auditor',
+                                            'Senator',
+                                            'Governor',
+                                            'Vice Governor',
+                                            'Secretary',
+                                            'Treasurer',
+                                            'College Auditor',
+                                            'Public Information Officer',
+                                            'Business Manager',
+                                            'Sargeant at Arms',
+                                            'Program/Year Level Rep',
+                                            'Representative',
+                                          ];
+                                          int indexA = dashHierarchy.indexOf(a.key);
+                                          int indexB = dashHierarchy.indexOf(b.key);
+                                          if (indexA != -1 && indexB != -1) return indexA.compareTo(indexB);
+                                          if (indexA != -1) return -1;
+                                          if (indexB != -1) return 1;
+                                          return a.key.compareTo(b.key);
+                                        })))
+                                        Builder(
+                                          builder: (context) {
+                                            int totalPosVotes = entry.value.fold(0, (sum, item) => sum + ((item['voteCount'] as num?)?.toInt() ?? 0));
+                                            int topVotes = entry.value.isNotEmpty ? ((entry.value.first['voteCount'] as num?)?.toInt() ?? 0) : 0;
+                                            
+                                            return Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.only(top: 14.0, bottom: 8.0),
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 4,
+                                                        height: 14,
+                                                        decoration: BoxDecoration(
+                                                          color: nemsuGold,
+                                                          borderRadius: BorderRadius.circular(2),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        entry.key.toUpperCase(),
+                                                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: nemsuBlue, letterSpacing: 0.5),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFFF1F5F9),
+                                                          borderRadius: BorderRadius.circular(10),
+                                                        ),
+                                                        child: Text(
+                                                          '$totalPosVotes total votes',
+                                                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                for (var candidate in entry.value)
+                                                  Builder(
+                                                    builder: (context) {
+                                                      String name = candidate['name']?.toString() ?? 'Unknown';
+                                                      String party = candidate['party']?.toString() ?? 'Independent';
+                                                      int cVotes = (candidate['voteCount'] as num?)?.toInt() ?? 0;
+                                                      double pct = totalPosVotes > 0 ? cVotes / totalPosVotes : 0.0;
+                                                      bool isLeading = topVotes > 0 && cVotes == topVotes;
+                                                      
+                                                      return _buildTallyRow(name, party, cVotes, pct, isLeading);
+                                                    }
+                                                  )
+                                              ],
+                                            );
+                                          }
+                                        )
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
                 );
               },
             );

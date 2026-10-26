@@ -215,9 +215,12 @@ class _BallotScreenState extends State<BallotScreen> {
                   }
 
                   // 👉 3. THE DATABASE WRITE
+                  final configData = configDoc.data();
                   await FirebaseFirestore.instance.collection('votes').add({
                     'voterId': widget.studentId,
                     'department': widget.studentDept,
+                    'academicYear': configData?['academicYear']?.toString(),
+                    'semester': configData?['semester']?.toString(),
                     'selections': _selectedCandidates,
                     'timestamp': FieldValue.serverTimestamp(),
                   });

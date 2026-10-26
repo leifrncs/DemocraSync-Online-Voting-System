@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 import '../services/ai_ocr_service.dart';
 import '../widgets/batch_ai_scan_dialog.dart';
+import '../utils/admin_kpi_helper.dart';
 
 class ElectionConfiguration extends StatefulWidget {
   const ElectionConfiguration({super.key});
@@ -248,92 +249,291 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
     }
   }
 
-  // --- FIREBASE: SAVE CONFIGURATION ---
-  Future<void> _saveConfiguration() async {
-    final bool periodChanged = (_selectedAcademicYear != _initialAcademicYear) ||
-        (_selectedSemester != _initialSemester);
-
-    bool? runAutoScan;
-    if (periodChanged) {
-      runAutoScan = await showDialog<bool?>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.auto_awesome_rounded, color: nemsuBlue, size: 22),
-              SizedBox(width: 8),
-              Text('Academic Period Updated',
-                  style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
+  Widget _buildConfigSummaryRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: nemsuBlue),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF1E293B)),
+              children: [
+                TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                TextSpan(text: value, style: const TextStyle(color: Color(0xFF475569))),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'You are changing the active election period from $_initialAcademicYear ($_initialSemester) to $_selectedAcademicYear ($_selectedSemester).\n\nWould you like DemocraSync AI to automatically scan and verify all registered voters against this new term now?',
-                style: const TextStyle(fontSize: 14, height: 1.45),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransitionStepItem(String title, String desc, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color)),
+                const SizedBox(height: 2),
+                Text(desc, style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B), height: 1.35)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showRoutineSaveConfirmationDialog() async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_outline_rounded, color: nemsuBlue, size: 22),
+            SizedBox(width: 8),
+            Text('Save Election Settings?', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.bold, fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You are about to update the general election configuration:',
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF334155)),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFCD34D)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildConfigSummaryRow(Icons.calendar_today_rounded, 'Active Period', '$_selectedAcademicYear • $_selectedSemester (Unchanged)'),
+                  const SizedBox(height: 6),
+                  _buildConfigSummaryRow(Icons.how_to_vote_rounded, 'Elective Positions', '${positionRules.length} positions configured'),
+                  const SizedBox(height: 6),
+                  _buildConfigSummaryRow(Icons.schedule_rounded, 'Schedule', '${startDate != null ? "${startDate!.month}/${startDate!.day}/${startDate!.year}" : "Not set"} to ${endDate != null ? "${endDate!.month}/${endDate!.day}/${endDate!.year}" : "Not set"}'),
+                  const SizedBox(height: 6),
+                  _buildConfigSummaryRow(Icons.psychology_rounded, 'AI OCR Engine', _activeModelName),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'These changes will take effect immediately for the active election.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: nemsuBlue,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm & Save', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showCrucialTransitionModal() async {
+    bool hasAcknowledged = false;
+
+    return showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 24),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Crucial: Academic Period Transition',
+                    style: TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
                 ),
-                child: const Row(
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded, color: Color(0xFFD97706), size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Voters with outdated CORs will require document renewal to regain voting access.',
-                        style: TextStyle(fontSize: 12, color: Color(0xFF92400E), fontWeight: FontWeight.w500),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFCD34D)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Transitioning Active Election Period:',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF92400E)),
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
+                            children: [
+                              Text(
+                                '$_initialAcademicYear ($_initialSemester)',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                              ),
+                              const Icon(Icons.arrow_forward_rounded, size: 16, color: Color(0xFFB45309)),
+                              Text(
+                                '$_selectedAcademicYear ($_selectedSemester)',
+                                style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold, color: nemsuBlue),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Saving this change will automatically trigger the following rollover actions:',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildTransitionStepItem(
+                      '1. Archive Concluded Election Data',
+                      'Final vote tallies, turnout percentages, and official statistics will be saved permanently to Election History Archives.',
+                      Icons.archive_rounded,
+                      const Color(0xFF0284C7),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildTransitionStepItem(
+                      '2. Clear Active Votes & Zero Tallies',
+                      'Active submitted votes will be deleted, and all candidate live tallies will be reset back to 0.',
+                      Icons.restart_alt_rounded,
+                      const Color(0xFFDC2626),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildTransitionStepItem(
+                      '3. Reset Registered Voter Status',
+                      'All student voter accounts will have voting eligibility restored (hasVoted = false) for the new term.',
+                      Icons.how_to_reg_rounded,
+                      const Color(0xFF16A34A),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildTransitionStepItem(
+                      '4. Activate New Term & Update Reports',
+                      'The new academic period will take effect immediately. The Admin Dashboard will display a fresh zeroed live report.',
+                      Icons.dashboard_customize_rounded,
+                      nemsuBlue,
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: hasAcknowledged ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: hasAcknowledged ? nemsuBlue : const Color(0xFFCBD5E1)),
+                      ),
+                      child: CheckboxListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                        dense: true,
+                        activeColor: nemsuBlue,
+                        value: hasAcknowledged,
+                        title: const Text(
+                          'I understand that previous election results will be archived and active tallies will reset to zero.',
+                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                        ),
+                        onChanged: (val) {
+                          setModalState(() {
+                            hasAcknowledged = val ?? false;
+                          });
+                        },
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Save Only', style: TextStyle(color: nemsuBlue, fontWeight: FontWeight.w600)),
-            ),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: nemsuBlue,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
-              onPressed: () => Navigator.pop(context, true),
-              icon: const Icon(Icons.auto_awesome_rounded, size: 16),
-              label: const Text('Save & Scan All Voters', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
+              TextButton(
+                onPressed: hasAcknowledged ? () => Navigator.pop(context, false) : null,
+                child: Text(
+                  'Save & Reset (No Auto-Scan)',
+                  style: TextStyle(
+                    color: hasAcknowledged ? nemsuBlue : Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasAcknowledged ? nemsuBlue : Colors.grey.shade300,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: hasAcknowledged ? () => Navigator.pop(context, true) : null,
+                icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                label: const Text('Save, Reset & Scan Voters', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-      if (runAutoScan == null) {
-        return; // Cancelled
-      }
-    }
-
+  // --- FIREBASE: SAVE ROUTINE CONFIGURATION ---
+  Future<void> _saveRoutineConfiguration() async {
     setState(() => _isSaving = true);
     try {
       DateTime? combinedStart;
       if (startDate != null && startTime != null) {
         combinedStart = DateTime(startDate!.year, startDate!.month, startDate!.day, startTime!.hour, startTime!.minute);
       }
-      
       DateTime? combinedEnd;
       if (endDate != null && endTime != null) {
         combinedEnd = DateTime(endDate!.year, endDate!.month, endDate!.day, endTime!.hour, endTime!.minute);
@@ -355,8 +555,17 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
 
       await AiOcrService().saveApiKey(_apiKeyController.text.trim(), modelName: _activeModelName);
 
-      _initialAcademicYear = _selectedAcademicYear;
-      _initialSemester = _selectedSemester;
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'action': 'Election Configuration Updated',
+        'user': 'admin',
+        'type': 'Configuration',
+        'details': {
+          'positionsCount': deduplicated.length,
+          'academicYear': _selectedAcademicYear,
+          'semester': _selectedSemester,
+        },
+      });
 
       if (!mounted) return;
       setState(() {
@@ -370,15 +579,173 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
             children: [
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 8),
-              Text('Election Configuration successfully saved to database!'),
+              Text('Election Configuration successfully updated!'),
             ],
           ),
           backgroundColor: Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving settings: $e'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
 
-      if (runAutoScan == true && mounted) {
+  // --- FIREBASE: EXECUTE ELECTION PERIOD TRANSITION & DATA RESET ---
+  Future<void> _executeElectionTransition({required bool runAutoScan}) async {
+    setState(() => _isSaving = true);
+    try {
+      // 1. Fetch current data for archiving
+      final candidatesSnap = await FirebaseFirestore.instance.collection('candidates').get();
+      final votesSnap = await FirebaseFirestore.instance.collection('votes').get();
+      final votersSnap = await FirebaseFirestore.instance.collection('voters').get();
+
+      final votersList = votersSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+      final votesList = votesSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+
+      final kpiMetrics = AdminKpiHelper.calculate(voters: votersList, votes: votesList);
+
+      final candidateResultsList = candidatesSnap.docs.map((doc) {
+        final d = doc.data();
+        return {
+          'id': doc.id,
+          'name': d['name'] ?? '',
+          'department': d['department'] ?? '',
+          'position': d['position'] ?? '',
+          'party': d['party'] ?? '',
+          'voteCount': (d['voteCount'] as num?)?.toInt() ?? 0,
+          'academicYear': _initialAcademicYear,
+          'semester': _initialSemester,
+        };
+      }).toList();
+
+      final String archiveDocId = 'archive_${_initialAcademicYear.replaceAll('/', '-')}_${_initialSemester.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}';
+
+      await FirebaseFirestore.instance.collection('election_archives').doc(archiveDocId).set({
+        'academicYear': _initialAcademicYear,
+        'semester': _initialSemester,
+        'archivedAt': FieldValue.serverTimestamp(),
+        'archivedBy': 'admin',
+        'totalVotes': kpiMetrics.totalVotes,
+        'registeredVoters': kpiMetrics.registeredVoters,
+        'verifiedVoters': kpiMetrics.verifiedVoters,
+        'pendingVerifications': kpiMetrics.pendingVerifications,
+        'turnoutPercentage': kpiMetrics.turnoutPercentage,
+        'deptTurnout': kpiMetrics.deptTurnout,
+        'candidateResults': candidateResultsList,
+        'status': 'Concluded',
+      });
+
+      // 2. Chunked Batches to reset candidate tallies, delete votes, and reset voters hasVoted
+      List<Future<void>> batchFutures = [];
+      WriteBatch currentBatch = FirebaseFirestore.instance.batch();
+      int opCount = 0;
+
+      void addOperation(void Function(WriteBatch b) action) {
+        action(currentBatch);
+        opCount++;
+        if (opCount >= 400) {
+          batchFutures.add(currentBatch.commit());
+          currentBatch = FirebaseFirestore.instance.batch();
+          opCount = 0;
+        }
+      }
+
+      // Reset candidate tallies to zero
+      for (var doc in candidatesSnap.docs) {
+        addOperation((b) => b.update(doc.reference, {'voteCount': 0}));
+      }
+
+      // Delete active votes
+      for (var doc in votesSnap.docs) {
+        addOperation((b) => b.delete(doc.reference));
+      }
+
+      // Reset voters hasVoted to false
+      for (var doc in votersSnap.docs) {
+        addOperation((b) => b.update(doc.reference, {'hasVoted': false}));
+      }
+
+      if (opCount > 0) {
+        batchFutures.add(currentBatch.commit());
+      }
+
+      await Future.wait(batchFutures);
+
+      // 3. Save new election configuration
+      DateTime? combinedStart;
+      if (startDate != null && startTime != null) {
+        combinedStart = DateTime(startDate!.year, startDate!.month, startDate!.day, startTime!.hour, startTime!.minute);
+      }
+      DateTime? combinedEnd;
+      if (endDate != null && endTime != null) {
+        combinedEnd = DateTime(endDate!.year, endDate!.month, endDate!.day, endTime!.hour, endTime!.minute);
+      }
+
+      final deduplicated = _deduplicatePositions(positionRules);
+
+      await FirebaseFirestore.instance.collection('config').doc('election_settings').set({
+        'positions': deduplicated,
+        'schedule': {
+          'start': combinedStart?.toIso8601String(),
+          'end': combinedEnd?.toIso8601String(),
+        },
+        'academicYear': _selectedAcademicYear,
+        'semester': _selectedSemester,
+        'enforceTermVerification': _enforceTermVerification,
+        'lastUpdated': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      await AiOcrService().saveApiKey(_apiKeyController.text.trim(), modelName: _activeModelName);
+
+      // 4. Audit Log
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'timestamp': FieldValue.serverTimestamp(),
+        'action': 'Academic Period Rollover & Election Reset',
+        'user': 'admin',
+        'type': 'Configuration',
+        'details': {
+          'previousAcademicYear': _initialAcademicYear,
+          'previousSemester': _initialSemester,
+          'newAcademicYear': _selectedAcademicYear,
+          'newSemester': _selectedSemester,
+          'archiveId': archiveDocId,
+          'archivedVotesCount': kpiMetrics.totalVotes,
+        },
+      });
+
+      _initialAcademicYear = _selectedAcademicYear;
+      _initialSemester = _selectedSemester;
+
+      if (!mounted) return;
+      setState(() {
+        positionRules = deduplicated;
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Election period updated to $_selectedAcademicYear ($_selectedSemester)! Previous data archived and active tallies reset to zero.',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      if (runAutoScan && mounted) {
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -392,8 +759,28 @@ class _ElectionConfigurationState extends State<ElectionConfiguration> with Sing
       if (!mounted) return;
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving settings: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(content: Text('Error executing election rollover: $e'), backgroundColor: Colors.redAccent),
       );
+    }
+  }
+
+  // --- FIREBASE: SAVE CONFIGURATION (CONFIRMATION GATE) ---
+  Future<void> _saveConfiguration() async {
+    final bool periodChanged = (_selectedAcademicYear != _initialAcademicYear) ||
+        (_selectedSemester != _initialSemester);
+
+    if (periodChanged) {
+      final bool? runAutoScan = await _showCrucialTransitionModal();
+      if (runAutoScan == null) {
+        return; // Cancelled
+      }
+      await _executeElectionTransition(runAutoScan: runAutoScan);
+    } else {
+      final bool? confirm = await _showRoutineSaveConfirmationDialog();
+      if (confirm != true) {
+        return; // Cancelled
+      }
+      await _saveRoutineConfiguration();
     }
   }
 
