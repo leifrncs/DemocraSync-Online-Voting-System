@@ -13,6 +13,7 @@ import 'voter_management.dart';
 import 'candidate_management.dart';
 import 'election_configuration.dart';
 import 'audit_logs.dart';
+import '../utils/admin_kpi_helper.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -51,10 +52,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
     try {
       var votersSnap = await FirebaseFirestore.instance.collection('voters').get();
       var candidatesSnap = await FirebaseFirestore.instance.collection('candidates').get();
+      var votesSnap = await FirebaseFirestore.instance.collection('votes').get();
 
-      int totalVoters = votersSnap.docs.where((doc) => (doc.data())['status'] == 'Verified').length;
-      int totalVotes = votersSnap.docs.where((doc) => (doc.data())['hasVoted'] == true).length;
-      double turnout = totalVoters > 0 ? (totalVotes / totalVoters) * 100 : 0;
+      final votersList = votersSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+      final votesList = votesSnap.docs.map((doc) => {'id': doc.id, ...(doc.data())}).toList();
+
+      final kpiMetrics = AdminKpiHelper.calculate(voters: votersList, votes: votesList);
+      int totalVoters = kpiMetrics.registeredVoters;
+      int totalVotes = kpiMetrics.totalVotes;
+      double turnout = kpiMetrics.turnoutPercentage * 100;
 
       // Group candidates by Department / Scope, then by Position
       Map<String, Map<String, List<Map<String, dynamic>>>> groupedByScope = {};
@@ -599,90 +605,90 @@ class _AdminDashboardState extends State<AdminDashboard> {
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance.collection('candidates').snapshots(),
           builder: (context, candidatesSnapshot) {
-            
-            if (votersSnapshot.connectionState == ConnectionState.waiting || candidatesSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: nemsuBlue));
-            }
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('votes').snapshots(),
+              builder: (context, votesSnapshot) {
+                if (votersSnapshot.connectionState == ConnectionState.waiting ||
+                    candidatesSnapshot.connectionState == ConnectionState.waiting ||
+                    votesSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: nemsuBlue));
+                }
 
-            final voters = votersSnapshot.data?.docs ?? [];
-            final candidates = candidatesSnapshot.data?.docs ?? [];
+                final votersDocs = votersSnapshot.data?.docs ?? [];
+                final candidates = candidatesSnapshot.data?.docs ?? [];
+                final votesDocs = votesSnapshot.data?.docs ?? [];
 
-            int registeredVoters = 0;
-            int totalVotes = 0;
-            int pendingVerifications = 0;
-            Map<String, int> deptTurnout = {};
+                final votersList = votersDocs
+                    .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
+                    .toList();
+                final votesList = votesDocs
+                    .map((doc) => {'id': doc.id, ...(doc.data() as Map<String, dynamic>)})
+                    .toList();
 
-            for (var doc in voters) {
-              var data = doc.data() as Map<String, dynamic>;
-              String status = data['status']?.toString() ?? '';
-              
-              if (status == 'Verified') {
-                registeredVoters++;
-              } else if (status == 'Pending' || status == 'Pending Verification') {
-                pendingVerifications++;
-              }
+                final kpiMetrics = AdminKpiHelper.calculate(
+                  voters: votersList,
+                  votes: votesList,
+                );
 
-              if (data['hasVoted'] == true) {
-                totalVotes++;
-                String dept = data['department']?.toString() ?? 'Unknown';
-                String shortDept = dept.replaceAll('College of ', '').replaceAll(' Education', '').replaceAll(' and ', ' & ');
-                deptTurnout[shortDept] = (deptTurnout[shortDept] ?? 0) + 1;
-              }
-            }
+                final int registeredVoters = kpiMetrics.registeredVoters;
+                final int verifiedVoters = kpiMetrics.verifiedVoters;
+                final int pendingVerifications = kpiMetrics.pendingVerifications;
+                final int totalVotes = kpiMetrics.totalVotes;
+                final double turnoutPercentage = kpiMetrics.turnoutPercentage;
+                final Map<String, int> deptTurnout = kpiMetrics.deptTurnout;
 
-            double turnoutPercentage = registeredVoters > 0 ? totalVotes / registeredVoters : 0.0;
-            Map<String, int> chartPositionVotes = {};
-            Map<String, List<Map<String, dynamic>>> scopedCandidates = {};
+                Map<String, int> chartPositionVotes = {};
+                Map<String, List<Map<String, dynamic>>> scopedCandidates = {};
 
-            for (var doc in candidates) {
-              var data = doc.data() as Map<String, dynamic>;
-              
-              String position = data['position']?.toString() ?? 'Unknown';
-              String dept = data['department']?.toString() ?? '';
-              int votes = (data['voteCount'] as num?)?.toInt() ?? 0;
-              
-              chartPositionVotes[position] = (chartPositionVotes[position] ?? 0) + votes;
+                for (var doc in candidates) {
+                  var data = doc.data() as Map<String, dynamic>;
+                  
+                  String position = data['position']?.toString() ?? 'Unknown';
+                  String dept = data['department']?.toString() ?? '';
+                  int votes = (data['voteCount'] as num?)?.toInt() ?? 0;
+                  
+                  chartPositionVotes[position] = (chartPositionVotes[position] ?? 0) + votes;
 
-              if (dept == _selectedTallyScope) {
-                scopedCandidates.putIfAbsent(position, () => []).add(data);
-              }
-            }
+                  if (dept == _selectedTallyScope) {
+                    scopedCandidates.putIfAbsent(position, () => []).add(data);
+                  }
+                }
 
-            scopedCandidates.forEach((key, list) {
-              list.sort((a, b) {
-                int bVotes = (b['voteCount'] as num?)?.toInt() ?? 0;
-                int aVotes = (a['voteCount'] as num?)?.toInt() ?? 0;
-                return bVotes.compareTo(aVotes);
-              });
-            });
+                scopedCandidates.forEach((key, list) {
+                  list.sort((a, b) {
+                    int bVotes = (b['voteCount'] as num?)?.toInt() ?? 0;
+                    int aVotes = (a['voteCount'] as num?)?.toInt() ?? 0;
+                    return bVotes.compareTo(aVotes);
+                  });
+                });
 
-            double screenWidth = MediaQuery.of(context).size.width;
+                double screenWidth = MediaQuery.of(context).size.width;
 
-            Widget card1 = _buildKPICard(
-              Icons.how_to_reg_rounded,
-              'Registered Voters',
-              registeredVoters.toString(),
-              nemsuBlue,
-              'Total verified students eligible to vote in the active election.',
-            );
-            Widget card2 = _buildKPICard(
-              Icons.how_to_vote_rounded,
-              'Total Votes Cast',
-              totalVotes.toString(),
-              const Color(0xFF7C3AED),
-              'Total encrypted and submitted ballots across all campus colleges.',
-            );
-            Widget card3 = _buildTurnoutCard(
-              turnoutPercentage,
-              description: 'Percentage of registered student voters who have completed voting.',
-            );
-            Widget card4 = _buildKPICard(
-              Icons.pending_actions_rounded,
-              'Pending Verifications',
-              pendingVerifications.toString(),
-              const Color(0xFFE11D48),
-              'Student COR documents and ID registrations awaiting verification.',
-            );
+                Widget card1 = _buildKPICard(
+                  Icons.how_to_reg_rounded,
+                  'Registered Voters',
+                  registeredVoters.toString(),
+                  nemsuBlue,
+                  'Total registered student accounts in DemocraSync ($verifiedVoters verified & eligible to vote).',
+                );
+                Widget card2 = _buildKPICard(
+                  Icons.how_to_vote_rounded,
+                  'Total Votes Cast',
+                  totalVotes.toString(),
+                  const Color(0xFF7C3AED),
+                  'Total official ballots submitted and verified across all colleges.',
+                );
+                Widget card3 = _buildTurnoutCard(
+                  turnoutPercentage,
+                  description: 'Turnout: ${(turnoutPercentage * 100).toStringAsFixed(1)}% of $verifiedVoters verified eligible voters.',
+                );
+                Widget card4 = _buildKPICard(
+                  Icons.pending_actions_rounded,
+                  'Pending Verifications',
+                  pendingVerifications.toString(),
+                  const Color(0xFFE11D48),
+                  'Student accounts awaiting enrollment or COR document verification.',
+                );
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 18.0),
@@ -962,10 +968,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ],
               ),
+                );
+              },
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
